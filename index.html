@@ -22,7 +22,17 @@
     --font-mono: 'IBM Plex Mono', monospace;
   }
 
-  * { box-sizing: border-box; margin: 0; padding: 0; }
+  /* ── TEMA CLARO ───────────────────────────────────────── */
+  body.light {
+    --bg:      #f0f2f7;
+    --surface: #ffffff;
+    --surface2:#e8eaf0;
+    --border:  #d0d5e8;
+    --text:    #1a1f35;
+    --muted:   #7a84a0;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; transition: background-color .2s, border-color .2s, color .15s; }
 
   body {
     background: var(--bg);
@@ -202,17 +212,74 @@
     text-transform: uppercase;
     letter-spacing: .8px;
   }
-  .btn-logout {
+  .btn-tema {
     background: none;
     border: 1px solid var(--border);
     color: var(--muted);
-    padding: 5px 12px;
-    font-family: var(--font-mono);
-    font-size: 11px;
+    width: 32px; height: 32px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px;
     cursor: pointer;
     transition: all .15s;
+    flex-shrink: 0;
   }
-  .btn-logout:hover { border-color: var(--danger); color: var(--danger); }
+  .btn-tema:hover { border-color: var(--accent); color: var(--accent); }
+
+  .btn-logout {
+    background: none;
+    border: none;
+    color: var(--muted);
+    padding: 8px 10px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    cursor: pointer;
+    transition: all .15s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    text-align: left;
+  }
+  .btn-logout:hover { color: var(--danger); }
+
+  /* Logo SIA topbar */
+  .topbar-logo img {
+    height: 28px;
+    width: auto;
+    object-fit: contain;
+  }
+
+  /* Tabs configuración */
+  .config-tabs {
+    display: flex;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 24px;
+  }
+  .config-tab {
+    padding: 10px 20px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--muted);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    transition: all .15s;
+    text-transform: uppercase;
+    letter-spacing: .8px;
+  }
+  .config-tab:hover { color: var(--text); }
+  .config-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  .config-tab-content { display: none; }
+  .config-tab-content.active { display: block; }
+
+  /* General config */
+  .general-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 24px;
+    max-width: 500px;
+  }
 
   /* Sidebar + main */
   .layout {
@@ -223,8 +290,9 @@
     width: 220px;
     background: var(--surface);
     border-right: 1px solid var(--border);
-    padding: 20px 0;
+    padding: 20px 0 60px;
     flex-shrink: 0;
+    position: relative;
   }
   .sidebar-section {
     padding: 0 16px;
@@ -762,8 +830,11 @@
 ════════════════════════════════════════════════════════ -->
 <div id="login-screen">
   <div class="login-card">
-    <div class="login-logo">Gest<span>Doc</span></div>
-    <div class="login-sub">// GESTIÓN DOCUMENTAL — v1.0</div>
+    <div style="text-align:center;margin-bottom:8px;">
+      <img src="./icons/Icono_tituloblanco.png" alt="SIA" style="height:48px;object-fit:contain;" onerror="this.style.display='none';document.getElementById('login-logo-fallback').style.display='block'"/>
+      <div id="login-logo-fallback" style="display:none;font-family:var(--font-mono);font-size:22px;font-weight:600;color:var(--text)">Gest<span style="color:var(--accent)">Doc</span></div>
+    </div>
+    <div class="login-sub" style="text-align:center;">// GESTIÓN DOCUMENTAL — v1.0</div>
 
     <label class="login-label">Usuario SIA</label>
     <input class="login-input" type="text" id="login-user" placeholder="usuario@empresa.com" value="admin@pamar.com"/>
@@ -788,7 +859,9 @@
 <div id="app">
   <!-- Topbar -->
   <div class="topbar">
-    <div class="topbar-logo">Gest<span>Doc</span></div>
+    <div class="topbar-logo">
+      <img src="./icons/Icono_tituloblanco.png" alt="SIA" onerror="this.outerHTML='<span style=\'font-family:var(--font-mono);font-size:16px;font-weight:600\'>Gest<span style=\'color:var(--accent)\'>Doc</span></span>'"/>
+    </div>
     <div class="topbar-right">
       <div class="user-badge">
         <div class="user-avatar" id="top-avatar">ED</div>
@@ -797,7 +870,7 @@
           <div class="user-role" id="top-role">editor</div>
         </div>
       </div>
-      <button class="btn-logout" onclick="doLogout()">SALIR</button>
+      <button class="btn-tema" onclick="toggleTema()" id="btn-tema" title="Cambiar tema">🌙</button>
     </div>
   </div>
 
@@ -821,6 +894,12 @@
         <div class="nav-item" onclick="showView('log')" id="nav-log">
           <span class="nav-icon">≡</span> Log de Actividad
         </div>
+      </div>
+      <!-- Salir al fondo del sidebar -->
+      <div style="margin-top:auto;padding:16px;border-top:1px solid var(--border);position:absolute;bottom:0;left:0;right:0;">
+        <button class="btn-logout" onclick="doLogout()">
+          <span style="font-size:14px;">⏻</span> Cerrar sesión
+        </button>
       </div>
     </div>
 
@@ -932,25 +1011,59 @@
         <div class="page-header">
           <div>
             <div class="page-title">Configuración</div>
-            <div class="page-subtitle">// Matriz de servicios y documentación requerida</div>
+            <div class="page-subtitle">// Parámetros del sistema</div>
           </div>
-          <button class="btn-sm primary" onclick="openModal('modal-nuevo-servicio-cfg')">+ Tipo de Servicio</button>
         </div>
-        <div class="config-grid">
-          <div>
-            <div style="font-size:11px;font-family:var(--font-mono);color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;">Tipos de Servicio</div>
-            <div class="config-servicio-list" id="config-servicio-list"></div>
+
+        <!-- Tabs -->
+        <div class="config-tabs">
+          <div class="config-tab active" onclick="switchConfigTab('matriz')" id="tab-matriz">Matriz</div>
+          <div class="config-tab" onclick="switchConfigTab('general')" id="tab-general">General</div>
+        </div>
+
+        <!-- Tab Matriz -->
+        <div class="config-tab-content active" id="tabcontent-matriz">
+          <div style="display:flex;justify-content:flex-end;margin-bottom:16px;">
+            <button class="btn-sm primary" onclick="openModal('modal-nuevo-servicio-cfg')">+ Tipo de Servicio</button>
           </div>
-          <div>
-            <div class="config-panel" id="config-panel">
-              <div class="empty-state">
-                <div class="empty-icon">◈</div>
-                <div class="empty-text">Seleccioná un tipo de servicio</div>
-                <div class="empty-sub">para ver su documentación requerida</div>
+          <div class="config-grid">
+            <div>
+              <div style="font-size:11px;font-family:var(--font-mono);color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;">Tipos de Servicio</div>
+              <div class="config-servicio-list" id="config-servicio-list"></div>
+            </div>
+            <div>
+              <div class="config-panel" id="config-panel">
+                <div class="empty-state">
+                  <div class="empty-icon">◈</div>
+                  <div class="empty-text">Seleccioná un tipo de servicio</div>
+                  <div class="empty-sub">para ver su documentación requerida</div>
+                </div>
               </div>
             </div>
           </div>
         </div>
+
+        <!-- Tab General -->
+        <div class="config-tab-content" id="tabcontent-general">
+          <div class="general-card">
+            <div class="form-group">
+              <label class="form-label">Nombre de la aplicación</label>
+              <input class="form-input" id="cfg-app-nombre" value="Gestión Documental" placeholder="Nombre visible en la app"/>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Logo (ruta relativa)</label>
+              <input class="form-input" id="cfg-app-logo" value="./icons/Icono_tituloblanco.png" placeholder="./icons/logo.png"/>
+              <div style="margin-top:8px;font-size:11px;font-family:var(--font-mono);color:var(--muted)">Preview:</div>
+              <div style="margin-top:8px;padding:12px;background:var(--bg);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;min-height:60px;">
+                <img id="cfg-logo-preview" src="./icons/Icono_tituloblanco.png" style="max-height:40px;object-fit:contain;" onerror="this.style.opacity='.3'"/>
+              </div>
+            </div>
+            <div style="margin-top:4px;">
+              <button class="btn-sm primary" onclick="guardarConfigGeneral()">Guardar cambios</button>
+            </div>
+          </div>
+        </div>
+
       </div>
 
       <!-- LOG -->
@@ -1883,8 +1996,63 @@ function renderLog(log) {
 
 
 // ═══════════════════════════════════════════════════════════
-// 14 - MODALES
+// 15 - TEMA CLARO/OSCURO
 // ═══════════════════════════════════════════════════════════
+function toggleTema() {
+  const isLight = document.body.classList.toggle('light');
+  document.getElementById('btn-tema').textContent = isLight ? '🌕' : '🌙';
+  localStorage.setItem('gestdoc_tema', isLight ? 'light' : 'dark');
+}
+
+// Restaurar tema guardado al cargar
+(function() {
+  if (localStorage.getItem('gestdoc_tema') === 'light') {
+    document.body.classList.add('light');
+    // El botón se actualiza cuando el DOM carga
+    document.addEventListener('DOMContentLoaded', () => {
+      const btn = document.getElementById('btn-tema');
+      if (btn) btn.textContent = '🌕';
+    });
+  }
+})();
+
+
+// ═══════════════════════════════════════════════════════════
+// 16 - TABS CONFIGURACION
+// ═══════════════════════════════════════════════════════════
+function switchConfigTab(tab) {
+  document.querySelectorAll('.config-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.config-tab-content').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-' + tab).classList.add('active');
+  document.getElementById('tabcontent-' + tab).classList.add('active');
+}
+
+function guardarConfigGeneral() {
+  const nombre = document.getElementById('cfg-app-nombre').value.trim();
+  const logo   = document.getElementById('cfg-app-logo').value.trim();
+  // Actualizar preview
+  document.getElementById('cfg-logo-preview').src = logo;
+  // Actualizar topbar logo
+  const topbarImg = document.querySelector('.topbar-logo img');
+  if (topbarImg) topbarImg.src = logo;
+  showToast('Configuración guardada.');
+}
+
+// Preview logo en tiempo real
+document.addEventListener('DOMContentLoaded', () => {
+  const logoInput = document.getElementById('cfg-app-logo');
+  if (logoInput) {
+    logoInput.addEventListener('input', () => {
+      document.getElementById('cfg-logo-preview').src = logoInput.value;
+    });
+  }
+  // Restaurar ícono tema si corresponde
+  if (localStorage.getItem('gestdoc_tema') === 'light') {
+    const btn = document.getElementById('btn-tema');
+    if (btn) btn.textContent = '🌕';
+  }
+});
+
 function closeModal(id) {
   document.getElementById(id).classList.remove('open');
 }
