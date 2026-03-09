@@ -864,8 +864,12 @@
 <div id="app">
   <!-- Topbar -->
   <div class="topbar">
-    <div class="topbar-logo">
-      <img src="./icons/Icono_tituloblanco.png" alt="SIA" onerror="this.outerHTML='<span style=\'font-family:var(--font-mono);font-size:16px;font-weight:600\'>Gest<span style=\'color:var(--accent)\'>Doc</span></span>'"/>
+    <div class="topbar-logo" style="display:flex;align-items:center;gap:12px;">
+      <img src="./icons/Icono_tituloblanco.png" alt="SIA" style="height:28px;object-fit:contain;" onerror="this.style.display='none'"/>
+      <div style="display:flex;flex-direction:column;line-height:1.2;">
+        <span style="font-family:var(--font-sans);font-size:14px;font-weight:600;color:#e8eaf0;letter-spacing:-.2px;">Gestión Documental</span>
+        <span style="font-family:var(--font-mono);font-size:10px;color:#6b7a99;letter-spacing:.5px;">v1.0 · MV/C</span>
+      </div>
     </div>
     <div class="topbar-right">
       <div class="user-badge">
