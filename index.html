@@ -1032,8 +1032,9 @@
 
         <!-- Tab Matriz -->
         <div class="config-tab-content active" id="tabcontent-matriz">
-          <div style="display:flex;justify-content:flex-end;margin-bottom:16px;">
-            <button class="btn-sm primary" onclick="openModal('modal-nuevo-servicio-cfg')">+ Tipo de Servicio</button>
+          <div style="display:flex;justify-content:flex-end;gap:8px;margin-bottom:16px;">
+            <button class="btn-sm" onclick="openModal('modal-nuevo-doc-cfg')">+ Documento</button>
+            <button class="btn-sm primary" onclick="openModal('modal-nuevo-servicio-cfg')">+ Servicio</button>
           </div>
           <div class="config-grid">
             <div>
@@ -1113,17 +1114,13 @@
     </div>
     <div class="modal-body">
       <div class="form-group">
-        <label class="form-label">Código de Obra *</label>
-        <input class="form-input" id="new-obra-codigo" placeholder="ej: OBR-2025-005"/>
-      </div>
-      <div class="form-group">
         <label class="form-label">Nombre de Obra *</label>
         <input class="form-input" id="new-obra-nombre" placeholder="Descripción de la obra"/>
       </div>
       <div class="form-group">
-        <label class="form-label">Empresa *</label>
+        <label class="form-label">Unidad de Negocio *</label>
         <select class="form-select" id="new-obra-empresa">
-          <option value="">Seleccioná empresa...</option>
+          <option value="">Seleccioná UN...</option>
           <option value="Pamar">Pamar</option>
           <option value="Saavedra">Saavedra</option>
           <option value="Symesa">Symesa</option>
@@ -1176,8 +1173,12 @@
     </div>
     <div class="modal-body">
       <div class="form-group">
-        <label class="form-label">Nombre del tipo de servicio *</label>
+        <label class="form-label">Nombre del servicio *</label>
         <input class="form-input" id="cfg-srv-nombre" placeholder="ej: Trabajos en altura"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Descripción</label>
+        <input class="form-input" id="cfg-srv-desc" placeholder="Descripción opcional"/>
       </div>
     </div>
     <div class="modal-footer">
@@ -1198,6 +1199,10 @@
       <div class="form-group">
         <label class="form-label">Nombre del documento *</label>
         <input class="form-input" id="cfg-doc-nombre" placeholder="ej: Seguro de vida"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Descripción</label>
+        <input class="form-input" id="cfg-doc-desc" placeholder="Descripción opcional"/>
       </div>
     </div>
     <div class="modal-footer">
@@ -1251,14 +1256,16 @@ let currentUser = null;
 let selectedPerfil = 'editor';
 
 // Estado en memoria
-let OBRAS    = [];
-let SERVICIOS = {};   // { obraId: [ servicio ] }
-let CONFIG   = {};   // { tipoServicio: [ {nombre, orden} ] }
+let OBRAS          = [];
+let SERVICIOS_CAT  = [];   // catálogo de servicios
+let DOCUMENTOS_CAT = [];   // catálogo de documentos
+let MATRIZ         = { headers: [], rows: [] };
+let DOCUMENTACION  = [];   // registros operativos
 
-let currentObraId       = null;
+let currentObraId        = null;
 let configServicioActivo = null;
 let selectedFileForUpload = null;
-let docToUpload          = null;
+let docToUpload           = null;
 
 const PERFILES_DEMO = {
   editor:    { nombre: 'Admin Editor',   initials: 'AE', perfil: 'editor' },
@@ -1374,19 +1381,20 @@ async function initApp() {
 
 async function cargarTodo() {
   try {
-    const [obras, config] = await Promise.all([
+    // Cargar en paralelo: obras, catálogos, matriz, documentacion
+    const [obras, serviciosCat, documentosCat, matriz, documentacion] = await Promise.all([
       gasPost({ accion: 'getObras' }),
-      gasPost({ accion: 'getConfig' }),
+      gasPost({ accion: 'getServicios' }),
+      gasPost({ accion: 'getDocumentos' }),
+      gasPost({ accion: 'getMatriz' }),
+      gasPost({ accion: 'getDocumentacion' }),
     ]);
-    OBRAS  = obras  || [];
-    CONFIG = config || {};
 
-    // Cargar servicios de todas las obras
-    SERVICIOS = {};
-    await Promise.all(OBRAS.map(async o => {
-      const srvs = await gasPost({ accion: 'getServicios', obraId: o.ID });
-      SERVICIOS[o.ID] = (srvs || []).map(normalizarServicio);
-    }));
+    OBRAS          = obras          || [];
+    SERVICIOS_CAT  = serviciosCat   || [];
+    DOCUMENTOS_CAT = documentosCat  || [];
+    MATRIZ         = matriz         || { headers: [], rows: [] };
+    DOCUMENTACION  = documentacion  || [];
 
     renderDashboard();
     renderObras();
@@ -1397,27 +1405,43 @@ async function cargarTodo() {
   }
 }
 
-// Normaliza keys del GAS (mayúsculas) a minúsculas para el frontend
-function normalizarServicio(s) {
-  return {
-    id:       s.ID,
-    tipo:     s.TipoServicio,
-    proveedor: s.Proveedor,
-    estado:   s.Estado,
-    docs: (s.docs || []).map(d => ({
-      id:      d.ID,
-      nombre:  d.NombreDoc,
-      estado:  (d.Estado || 'Pendiente').toLowerCase(),
-      link:    d.LinkArchivo || null,
-    })),
-  };
+// ── Helpers para acceder a los datos v2 ──────────────────────
+
+// Docs de Documentacion filtrados por obra
+function getDocsPorObra(obraId) {
+  return DOCUMENTACION.filter(d => d.Obra_ID === obraId);
 }
 
+// Docs agrupados por Servicio_ID+Proveedor dentro de una obra
+function getServiciosPorObra(obraId) {
+  const docs = getDocsPorObra(obraId);
+  const grupos = {};
+  docs.forEach(d => {
+    const key = d.Servicio_ID + '||' + d.Proveedor;
+    if (!grupos[key]) grupos[key] = {
+      Servicio_ID: d.Servicio_ID,
+      Proveedor:   d.Proveedor,
+      UN:          d.UN,
+      Obra_ID:     d.Obra_ID,
+      docs: [],
+    };
+    grupos[key].docs.push(d);
+  });
+  return Object.values(grupos);
+}
+
+// Nombre de servicio desde catálogo
+function getNombreServicio(srvId) {
+  const s = SERVICIOS_CAT.find(s => s.Servicio_ID === srvId);
+  return s ? s.Servicio_Nombre : srvId;
+}
+
+// Normaliza obra para render (keys del Sheet → consistentes)
 function normalizarObra(o) {
   return {
-    id:      o.ID,
+    id:      o.Obra_ID,
     nombre:  o.Nombre,
-    empresa: o.Empresa,
+    empresa: o.UN,
     estado:  o.Estado,
   };
 }
@@ -1443,16 +1467,16 @@ function showView(id) {
 // 6 - HELPERS RENDER
 // ═══════════════════════════════════════════════════════════
 function getDocsStats(obraId) {
-  const servicios = SERVICIOS[obraId] || [];
+  const docs = getDocsPorObra(obraId);
   let total = 0, aprobados = 0, cargados = 0, rechazados = 0, pendientes = 0;
-  servicios.forEach(s => (s.docs || []).forEach(d => {
+  docs.forEach(d => {
     total++;
-    const est = (d.estado || '').toLowerCase();
+    const est = (d.Doc_Estado || '').toLowerCase();
     if (est === 'aprobado') aprobados++;
     else if (est === 'cargado') cargados++;
     else if (est === 'rechazado') rechazados++;
     else pendientes++;
-  }));
+  });
   return { total, aprobados, cargados, rechazados, pendientes };
 }
 
@@ -1484,12 +1508,12 @@ function renderDashboard() {
   const obras = obrasVisibles();
   let totalPend = 0, totalAprov = 0, totalRech = 0;
   obras.forEach(o => {
-    const s = getDocsStats(o.ID || o.id);
+    const s = getDocsStats(o.Obra_ID);
     totalPend  += s.pendientes + s.cargados;
     totalAprov += s.aprobados;
     totalRech  += s.rechazados;
   });
-  document.querySelectorAll('.stat-value')[0].textContent = obras.filter(o=>(o.Estado||o.estado)==='Activa').length;
+  document.querySelectorAll('.stat-value')[0].textContent = obras.filter(o => o.Estado === 'Activa').length;
   document.querySelectorAll('.stat-value')[1].textContent = totalPend;
   document.querySelectorAll('.stat-value')[2].textContent = totalAprov;
   document.querySelectorAll('.stat-value')[3].textContent = totalRech;
@@ -1500,17 +1524,13 @@ function renderDashboard() {
     return;
   }
   tbody.innerHTML = obras.map(o => {
-    const id  = o.ID || o.id;
-    const nom = o.Nombre || o.nombre;
-    const emp = o.Empresa || o.empresa;
-    const est = o.Estado  || o.estado;
-    const s   = getDocsStats(id);
+    const s   = getDocsStats(o.Obra_ID);
     const pct = s.total > 0 ? Math.round((s.aprobados / s.total) * 100) : 0;
-    const fillCls = pct === 100 ? 'ok' : pct > 60 ? '' : 'warn';
-    const srvCount = (SERVICIOS[id] || []).length;
-    return `<tr onclick="openObra('${id}')">
-      <td><strong>${nom}</strong></td>
-      <td><span class="empresa-tag">${emp}</span></td>
+    const fillCls  = pct === 100 ? 'ok' : pct > 60 ? '' : 'warn';
+    const srvCount = getServiciosPorObra(o.Obra_ID).length;
+    return `<tr onclick="openObra('${o.Obra_ID}')">
+      <td><strong>${o.Nombre}</strong></td>
+      <td><span class="empresa-tag">${o.UN}</span></td>
       <td><span style="font-family:var(--font-mono)">${srvCount}</span></td>
       <td>
         <div class="doc-progress">
@@ -1518,7 +1538,7 @@ function renderDashboard() {
           <span class="progress-text">${s.aprobados}/${s.total}</span>
         </div>
       </td>
-      <td>${estadoBadge(est)}</td>
+      <td>${estadoBadge(o.Estado)}</td>
     </tr>`;
   }).join('');
 }
@@ -1528,16 +1548,15 @@ function renderDashboard() {
 // 8 - OBRAS
 // ═══════════════════════════════════════════════════════════
 function obrasVisibles() {
-  // Proveedor solo ve sus obras (por ahora todas — se filtrará al conectar SIA)
   return OBRAS;
 }
 
 function renderObras(filter = '') {
   let obras = obrasVisibles();
   if (filter) obras = obras.filter(o => {
-    const id  = (o.ID  || o.id  || '').toLowerCase();
-    const nom = (o.Nombre || o.nombre || '').toLowerCase();
-    const emp = (o.Empresa || o.empresa || '').toLowerCase();
+    const id  = (o.Obra_ID || '').toLowerCase();
+    const nom = (o.Nombre  || '').toLowerCase();
+    const emp = (o.UN      || '').toLowerCase();
     const f   = filter.toLowerCase();
     return id.includes(f) || nom.includes(f) || emp.includes(f);
   });
@@ -1547,14 +1566,14 @@ function renderObras(filter = '') {
     return;
   }
   tbody.innerHTML = obras.map(o => {
-    const id  = o.ID || o.id;
-    const nom = o.Nombre || o.nombre;
-    const emp = o.Empresa || o.empresa;
-    const est = o.Estado  || o.estado;
+    const id  = o.Obra_ID;
+    const nom = o.Nombre;
+    const emp = o.UN;
+    const est = o.Estado;
     const s   = getDocsStats(id);
     const pct = s.total > 0 ? Math.round((s.aprobados / s.total) * 100) : 0;
     const fillCls = pct === 100 ? 'ok' : pct > 60 ? '' : 'warn';
-    const srvCount = (SERVICIOS[id] || []).length;
+    const srvCount = getServiciosPorObra(id).length;
     return `<tr onclick="openObra('${id}')">
       <td><span style="font-family:var(--font-mono);color:var(--muted)">${id}</span></td>
       <td><strong>${nom}</strong></td>
@@ -1576,23 +1595,18 @@ function filtrarObras() {
 }
 
 async function crearObra() {
-  const codigo  = document.getElementById('new-obra-codigo').value.trim();
   const nombre  = document.getElementById('new-obra-nombre').value.trim();
   const empresa = document.getElementById('new-obra-empresa').value;
-  if (!codigo || !nombre || !empresa) return showToast('Completá todos los campos.', 'error');
+  if (!nombre || !empresa) return showToast('Completá todos los campos.', 'error');
   const btn = document.querySelector('#modal-nueva-obra .btn-sm.primary');
   setLoading(btn, true);
   try {
-    await gasPost({ accion: 'crearObra', data: { nombre, empresa, notas: '' } });
-    // Recargar obras
-    const obras = await gasPost({ accion: 'getObras' });
-    OBRAS = obras || [];
-    SERVICIOS[codigo] = [];
+    await gasPost({ accion: 'crearObra', data: { Nombre: nombre, UN: empresa } });
+    OBRAS = await gasPost({ accion: 'getObras' });
     renderDashboard();
     renderObras();
     closeModal('modal-nueva-obra');
-    document.getElementById('new-obra-codigo').value = '';
-    document.getElementById('new-obra-nombre').value = '';
+    document.getElementById('new-obra-nombre').value  = '';
     document.getElementById('new-obra-empresa').value = '';
     showToast('Obra creada correctamente.');
   } catch(e) {
@@ -1608,22 +1622,19 @@ async function crearObra() {
 // ═══════════════════════════════════════════════════════════
 async function openObra(id) {
   currentObraId = id;
-  const obra = OBRAS.find(o => (o.ID||o.id) === id);
+  const obra = OBRAS.find(o => o.Obra_ID === id);
   if (!obra) return;
-  const nom = obra.Nombre || obra.nombre;
-  const emp = obra.Empresa || obra.empresa;
-  const est = obra.Estado  || obra.estado;
 
-  document.getElementById('detalle-nombre').textContent = nom;
-  document.getElementById('detalle-badge').innerHTML    = estadoBadge(est);
+  document.getElementById('detalle-nombre').textContent = obra.Nombre;
+  document.getElementById('detalle-badge').innerHTML    = estadoBadge(obra.Estado);
   document.getElementById('detalle-meta').innerHTML = `
     <div class="obra-meta-item">
       <span class="obra-meta-label">Código</span>
-      <span class="obra-meta-value" style="font-family:var(--font-mono)">${id}</span>
+      <span class="obra-meta-value" style="font-family:var(--font-mono)">${obra.Obra_ID}</span>
     </div>
     <div class="obra-meta-item">
-      <span class="obra-meta-label">Empresa</span>
-      <span class="obra-meta-value">${emp}</span>
+      <span class="obra-meta-label">UN</span>
+      <span class="obra-meta-value">${obra.UN}</span>
     </div>
     <div class="obra-meta-item">
       <span class="obra-meta-label">Servicios</span>
@@ -1633,14 +1644,15 @@ async function openObra(id) {
   document.getElementById('detalle-actions').style.display = currentUser.perfil === 'editor' ? '' : 'none';
   showView('obra-detalle');
 
-  // Cargar servicios frescos del GAS
   const grid = document.getElementById('servicios-grid');
   grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="empty-icon" style="font-size:20px">⟳</div><div class="empty-text">Cargando...</div></div>`;
   try {
-    const srvs = await gasPost({ accion: 'getServicios', obraId: id });
-    SERVICIOS[id] = (srvs || []).map(normalizarServicio);
-    document.getElementById('detalle-srv-count').textContent = SERVICIOS[id].length;
-    renderServicios(SERVICIOS[id]);
+    const docs = await gasPost({ accion: 'getDocumentacion', filtros: { Obra_ID: id } });
+    // Actualizar DOCUMENTACION local con los docs de esta obra
+    DOCUMENTACION = DOCUMENTACION.filter(d => d.Obra_ID !== id).concat(docs || []);
+    const servicios = getServiciosPorObra(id);
+    document.getElementById('detalle-srv-count').textContent = servicios.length;
+    renderServicios(servicios);
   } catch(e) {
     showToast('Error cargando servicios: ' + e.message, 'error');
   }
@@ -1658,25 +1670,27 @@ function renderServicios(servicios) {
   }
   const isEditor    = currentUser.perfil === 'editor';
   const isProveedor = currentUser.perfil === 'proveedor';
+
   grid.innerHTML = servicios.map(srv => {
-    const docItems = srv.docs.map(doc => {
-      const est = (doc.estado || '').toLowerCase();
+    const srvNombre = getNombreServicio(srv.Servicio_ID);
+    const docItems  = srv.docs.map(doc => {
+      const est = (doc.Doc_Estado || 'pendiente').toLowerCase();
       let actions = '';
       if (isEditor && est === 'cargado') {
         actions = `<div style="display:flex;gap:4px">
           <button class="btn-icon" style="color:var(--success);border-color:rgba(34,197,94,.4)" title="Aprobar"
-            onclick="cambiarEstadoDoc('${doc.id}','${srv.id}','Aprobado','${doc.nombre}','${srv.proveedor}',event)">✓</button>
+            onclick="cambiarEstadoDoc('${doc.Obra_ID}','${doc.Servicio_ID}','${doc.Doc_ID}','${srv.Proveedor}','Aprobado',event)">✓</button>
           <button class="btn-icon" style="color:var(--danger);border-color:rgba(239,68,68,.4)" title="Rechazar"
-            onclick="cambiarEstadoDoc('${doc.id}','${srv.id}','Rechazado','${doc.nombre}','${srv.proveedor}',event)">✕</button>
+            onclick="cambiarEstadoDoc('${doc.Obra_ID}','${doc.Servicio_ID}','${doc.Doc_ID}','${srv.Proveedor}','Rechazado',event)">✕</button>
         </div>`;
       } else if ((isProveedor || isEditor) && (est === 'pendiente' || est === 'rechazado')) {
         actions = `<button class="btn-sm" style="font-size:10px;padding:4px 10px"
-          onclick="abrirSubirDoc('${doc.id}','${srv.id}','${doc.nombre}','${srv.proveedor}',event)">Subir</button>`;
-      } else if (doc.link) {
-        actions = `<a href="${doc.link}" target="_blank" style="font-size:10px;font-family:var(--font-mono);color:var(--accent)">Ver →</a>`;
+          onclick="abrirSubirDoc('${doc.Obra_ID}','${doc.Servicio_ID}','${doc.Doc_ID}','${srv.Proveedor}','${doc.Doc_Nombre}',event)">Subir</button>`;
+      } else if (doc.Doc_LinkArchivo) {
+        actions = `<a href="${doc.Doc_LinkArchivo}" target="_blank" style="font-size:10px;font-family:var(--font-mono);color:var(--accent)">Ver →</a>`;
       }
       return `<li class="doc-item">
-        <span class="doc-name">${doc.nombre}</span>
+        <span class="doc-name">${doc.Doc_Nombre}</span>
         <div style="display:flex;align-items:center;gap:8px">
           ${docEstadoBadge(est)}
           ${actions}
@@ -1684,15 +1698,16 @@ function renderServicios(servicios) {
       </li>`;
     }).join('');
 
-    const stats = srv.docs.reduce((a,d) => {
-      const e = (d.estado||'').toLowerCase();
-      a[e] = (a[e]||0)+1; return a;
+    const stats = srv.docs.reduce((a, d) => {
+      const e = (d.Doc_Estado || 'pendiente').toLowerCase();
+      a[e] = (a[e] || 0) + 1; return a;
     }, {});
+
     return `<div class="servicio-card">
       <div class="servicio-card-header">
         <div>
-          <div class="servicio-nombre">${srv.tipo}</div>
-          <div class="servicio-proveedor">⬡ ${srv.proveedor}</div>
+          <div class="servicio-nombre">${srvNombre}</div>
+          <div class="servicio-proveedor">⬡ ${srv.Proveedor}</div>
         </div>
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
           ${stats.rechazado ? `<span class="badge badge-red">⚠ ${stats.rechazado} rechazado${stats.rechazado>1?'s':''}</span>` : ''}
@@ -1711,17 +1726,16 @@ function renderServicios(servicios) {
 // ═══════════════════════════════════════════════════════════
 // 10 - ACCIONES DOCUMENTOS
 // ═══════════════════════════════════════════════════════════
-async function cambiarEstadoDoc(docId, srvId, nuevoEstado, nombreDoc, proveedor, e) {
+async function cambiarEstadoDoc(obraId, servicioId, docId, proveedor, nuevoEstado, e) {
   e.stopPropagation();
   try {
     await gasPost({
       accion: 'cambiarEstadoDoc',
-      data: { docId, servicioId: srvId, obraId: currentObraId, nuevoEstado, nombreDoc, proveedor },
+      data: { Obra_ID: obraId, Servicio_ID: servicioId, Doc_ID: docId, Proveedor: proveedor, nuevoEstado },
     });
-    // Recargar servicios de la obra
-    const srvs = await gasPost({ accion: 'getServicios', obraId: currentObraId });
-    SERVICIOS[currentObraId] = (srvs || []).map(normalizarServicio);
-    renderServicios(SERVICIOS[currentObraId]);
+    const docs = await gasPost({ accion: 'getDocumentacion', filtros: { Obra_ID: obraId } });
+    DOCUMENTACION = DOCUMENTACION.filter(d => d.Obra_ID !== obraId).concat(docs || []);
+    renderServicios(getServiciosPorObra(obraId));
     renderDashboard();
     showToast(nuevoEstado === 'Aprobado' ? '✓ Documento aprobado' : '✕ Documento rechazado',
               nuevoEstado === 'Aprobado' ? 'ok' : 'error');
@@ -1730,9 +1744,9 @@ async function cambiarEstadoDoc(docId, srvId, nuevoEstado, nombreDoc, proveedor,
   }
 }
 
-function abrirSubirDoc(docId, srvId, docNombre, proveedor, e) {
+function abrirSubirDoc(obraId, servicioId, docId, proveedor, docNombre, e) {
   e.stopPropagation();
-  docToUpload = { docId, srvId, docNombre, proveedor };
+  docToUpload = { obraId, servicioId, docId, proveedor, docNombre };
   document.getElementById('subir-doc-title').textContent = `CARGAR — ${docNombre}`;
   document.getElementById('file-selected').style.display = 'none';
   document.getElementById('btn-subir-doc').disabled = true;
@@ -1774,7 +1788,6 @@ async function subirDoc() {
   const btn = document.getElementById('btn-subir-doc');
   setLoading(btn, true);
   try {
-    // Convertir a base64
     const base64 = await new Promise((res, rej) => {
       const r = new FileReader();
       r.onload  = () => res(r.result.split(',')[1]);
@@ -1785,20 +1798,19 @@ async function subirDoc() {
     await gasPost({
       accion: 'subirArchivo',
       data: {
-        docId:         docToUpload.docId,
-        servicioId:    docToUpload.srvId,
-        obraId:        currentObraId,
-        nombreDoc:     docToUpload.docNombre,
+        Obra_ID:       docToUpload.obraId,
+        Servicio_ID:   docToUpload.servicioId,
+        Doc_ID:        docToUpload.docId,
+        Proveedor:     docToUpload.proveedor,
         nombreArchivo: selectedFileForUpload.name,
         mimeType:      selectedFileForUpload.type || 'application/octet-stream',
         base64,
       },
     });
 
-    // Recargar servicios
-    const srvs = await gasPost({ accion: 'getServicios', obraId: currentObraId });
-    SERVICIOS[currentObraId] = (srvs || []).map(normalizarServicio);
-    renderServicios(SERVICIOS[currentObraId]);
+    const docs = await gasPost({ accion: 'getDocumentacion', filtros: { Obra_ID: docToUpload.obraId } });
+    DOCUMENTACION = DOCUMENTACION.filter(d => d.Obra_ID !== docToUpload.obraId).concat(docs || []);
+    renderServicios(getServiciosPorObra(docToUpload.obraId));
     renderDashboard();
     closeModal('modal-subir-doc');
     showToast('✓ Archivo subido correctamente.');
@@ -1818,8 +1830,8 @@ function openModal(id) {
   if (id === 'modal-nuevo-servicio') {
     const sel = document.getElementById('new-srv-tipo');
     sel.innerHTML = '<option value="">Seleccioná tipo...</option>';
-    Object.keys(CONFIG).forEach(t => {
-      sel.innerHTML += `<option value="${t}">${t}</option>`;
+    SERVICIOS_CAT.forEach(s => {
+      sel.innerHTML += `<option value="${s.Servicio_ID}">${s.Servicio_Nombre}</option>`;
     });
     document.getElementById('docs-preview').style.display = 'none';
   }
@@ -1827,32 +1839,41 @@ function openModal(id) {
 }
 
 function previewDocs() {
-  const tipo    = document.getElementById('new-srv-tipo').value;
+  const srvId   = document.getElementById('new-srv-tipo').value;
   const preview = document.getElementById('docs-preview');
-  if (!tipo) { preview.style.display = 'none'; return; }
-  const docs = CONFIG[tipo] || [];
-  document.getElementById('docs-preview-list').innerHTML = docs.map(d =>
-    `<div style="padding:5px 0;border-bottom:1px solid var(--border);font-size:12px;color:var(--muted);font-family:var(--font-mono)">· ${d.nombre || d}</div>`
+  if (!srvId) { preview.style.display = 'none'; return; }
+  const matrizRow = (MATRIZ.rows || []).find(r => r.Servicio_ID === srvId);
+  const docIds    = matrizRow ? matrizRow.docs : [];
+  if (!docIds.length) { preview.style.display = 'none'; return; }
+  const docMap = {};
+  DOCUMENTOS_CAT.forEach(d => docMap[d.Doc_ID] = d.Doc_Nombre);
+  document.getElementById('docs-preview-list').innerHTML = docIds.map(id =>
+    `<div style="padding:5px 0;border-bottom:1px solid var(--border);font-size:12px;color:var(--muted);font-family:var(--font-mono)">· ${docMap[id] || id}</div>`
   ).join('');
   preview.style.display = 'block';
 }
 
 async function crearServicio() {
-  const tipo      = document.getElementById('new-srv-tipo').value;
+  const srvId    = document.getElementById('new-srv-tipo').value;
   const proveedor = document.getElementById('new-srv-proveedor').value.trim();
-  if (!tipo || !proveedor) return showToast('Completá todos los campos.', 'error');
+  const obra     = OBRAS.find(o => o.Obra_ID === currentObraId);
+  if (!srvId || !proveedor) return showToast('Completá todos los campos.', 'error');
   const btn = document.querySelector('#modal-nuevo-servicio .btn-sm.primary');
   setLoading(btn, true);
   try {
-    await gasPost({ accion: 'crearServicio', data: { obraId: currentObraId, tipoServicio: tipo, proveedor } });
-    const srvs = await gasPost({ accion: 'getServicios', obraId: currentObraId });
-    SERVICIOS[currentObraId] = (srvs || []).map(normalizarServicio);
-    document.getElementById('detalle-srv-count').textContent = SERVICIOS[currentObraId].length;
-    renderServicios(SERVICIOS[currentObraId]);
+    const result = await gasPost({
+      accion: 'crearRegistrosDoc',
+      data: { UN: obra?.UN || '', Proveedor: proveedor, Obra_ID: currentObraId, Servicio_ID: srvId },
+    });
+    const docs = await gasPost({ accion: 'getDocumentacion', filtros: { Obra_ID: currentObraId } });
+    DOCUMENTACION = DOCUMENTACION.filter(d => d.Obra_ID !== currentObraId).concat(docs || []);
+    const servicios = getServiciosPorObra(currentObraId);
+    document.getElementById('detalle-srv-count').textContent = servicios.length;
+    renderServicios(servicios);
     renderDashboard();
     closeModal('modal-nuevo-servicio');
     document.getElementById('new-srv-proveedor').value = '';
-    showToast('Servicio creado con ' + (CONFIG[tipo]||[]).length + ' documentos requeridos.');
+    showToast(`Servicio creado con ${result.creados} documentos requeridos.`);
   } catch(e) {
     showToast('Error: ' + e.message, 'error');
   } finally {
@@ -1865,53 +1886,80 @@ async function crearServicio() {
 // 12 - CONFIGURACION
 // ═══════════════════════════════════════════════════════════
 function renderConfig() {
-  const list = document.getElementById('config-servicio-list');
-  list.innerHTML = Object.keys(CONFIG).map(tipo => {
-    const cnt = (CONFIG[tipo] || []).length;
-    return `<div class="config-servicio-item ${configServicioActivo === tipo ? 'active' : ''}"
-              onclick="selectConfigServicio('${tipo}')">
-      <span>${tipo}</span>
-      <span class="config-doc-count">${cnt}</span>
-    </div>`;
-  }).join('') || `<div style="font-size:12px;color:var(--muted);padding:10px">Sin tipos configurados</div>`;
+  renderConfigServicios();
 }
 
-function selectConfigServicio(tipo) {
-  configServicioActivo = tipo;
-  renderConfig();
+function renderConfigServicios() {
+  const list = document.getElementById('config-servicio-list');
+  if (!list) return;
+  list.innerHTML = SERVICIOS_CAT.map(s => {
+    // Contar docs que aplican en la Matriz
+    const matrizRow = (MATRIZ.rows || []).find(r => r.Servicio_ID === s.Servicio_ID);
+    const cnt = matrizRow ? matrizRow.docs.length : 0;
+    return `<div class="config-servicio-item ${configServicioActivo === s.Servicio_ID ? 'active' : ''}"
+              onclick="selectConfigServicio('${s.Servicio_ID}','${s.Servicio_Nombre.replace(/'/g,"\\'")}')">
+      <span>${s.Servicio_Nombre}</span>
+      <span class="config-doc-count">${cnt}</span>
+    </div>`;
+  }).join('') || `<div style="font-size:12px;color:var(--muted);padding:10px">Sin servicios configurados</div>`;
+}
+
+function selectConfigServicio(srvId, srvNombre) {
+  configServicioActivo = srvId;
+  renderConfigServicios();
   const panel = document.getElementById('config-panel');
-  const docs  = CONFIG[tipo] || [];
+  const matrizRow = (MATRIZ.rows || []).find(r => r.Servicio_ID === srvId);
+  const docsActivos = matrizRow ? matrizRow.docs : [];
+
+  const docRows = DOCUMENTOS_CAT.map(doc => {
+    const activo = docsActivos.includes(doc.Doc_ID);
+    return `<div class="config-doc-row">
+      <span>· ${doc.Doc_Nombre}</span>
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-family:var(--font-mono);font-size:11px;color:var(--muted)">
+        <input type="checkbox" ${activo ? 'checked' : ''}
+          onchange="toggleMatriz('${srvId}','${doc.Doc_ID}',this.checked)"
+          style="accent-color:var(--accent);width:14px;height:14px;cursor:pointer"/>
+        ${activo ? '<span style="color:var(--success)">Activo</span>' : 'Inactivo'}
+      </label>
+    </div>`;
+  }).join('');
+
   panel.innerHTML = `
     <div class="config-panel-header">
-      <div class="config-panel-title">${tipo}</div>
-      <div style="display:flex;gap:8px">
-        <button class="btn-sm primary" onclick="openModal('modal-nuevo-doc-cfg')">+ Agregar doc</button>
-        <button class="btn-sm" style="border-color:rgba(239,68,68,.4);color:var(--danger)" onclick="eliminarTipoServicio('${tipo}')">Eliminar tipo</button>
-      </div>
+      <div class="config-panel-title">${srvNombre}</div>
     </div>
-    ${docs.length === 0
-      ? '<div class="empty-state"><div class="empty-icon">◫</div><div class="empty-text">Sin documentos configurados</div></div>'
-      : docs.map((doc, i) => `
-        <div class="config-doc-row">
-          <span>· ${doc.nombre || doc}</span>
-          <button class="btn-icon" title="Eliminar" onclick="eliminarDocCfg('${tipo}','${doc.nombre || doc}')">✕</button>
-        </div>`).join('')
+    ${DOCUMENTOS_CAT.length === 0
+      ? '<div class="empty-state"><div class="empty-icon">◫</div><div class="empty-text">Sin documentos en el catálogo</div><div class="empty-sub">Agregá documentos desde la pestaña Documentos</div></div>'
+      : docRows
     }`;
+}
+
+async function toggleMatriz(srvId, docId, activo) {
+  try {
+    await gasPost({ accion: 'setMatrizCelda', data: { Servicio_ID: srvId, Doc_ID: docId, valor: activo ? 'X' : '' } });
+    // Actualizar MATRIZ local
+    const m = await gasPost({ accion: 'getMatriz' });
+    MATRIZ = m || { headers: [], rows: [] };
+    renderConfigServicios();
+    showToast(activo ? '✓ Documento activado en la Matriz.' : 'Documento desactivado.');
+  } catch(e) {
+    showToast('Error: ' + e.message, 'error');
+  }
 }
 
 async function crearTipoServicio() {
   const nombre = document.getElementById('cfg-srv-nombre').value.trim();
+  const desc   = document.getElementById('cfg-srv-desc') ? document.getElementById('cfg-srv-desc').value.trim() : '';
   if (!nombre) return showToast('Ingresá un nombre.', 'error');
-  if (CONFIG[nombre]) return showToast('Ya existe ese tipo.', 'error');
   const btn = document.querySelector('#modal-nuevo-servicio-cfg .btn-sm.primary');
   setLoading(btn, true);
   try {
-    await gasPost({ accion: 'crearTipoServicio', data: { nombre } });
-    CONFIG[nombre] = [];
-    renderConfig();
+    await gasPost({ accion: 'crearServicio', data: { Servicio_Nombre: nombre, Servicio_Desc: desc } });
+    SERVICIOS_CAT = await gasPost({ accion: 'getServicios' });
+    renderConfigServicios();
     closeModal('modal-nuevo-servicio-cfg');
     document.getElementById('cfg-srv-nombre').value = '';
-    showToast('Tipo de servicio creado.');
+    showToast('Servicio creado.');
   } catch(e) {
     showToast('Error: ' + e.message, 'error');
   } finally {
@@ -1919,21 +1967,22 @@ async function crearTipoServicio() {
   }
 }
 
-async function agregarDocCfg() {
+async function crearDocumentoCat() {
   const nombre = document.getElementById('cfg-doc-nombre').value.trim();
+  const desc   = document.getElementById('cfg-doc-desc') ? document.getElementById('cfg-doc-desc').value.trim() : '';
   if (!nombre) return showToast('Ingresá un nombre.', 'error');
-  if (!configServicioActivo) return;
   const btn = document.querySelector('#modal-nuevo-doc-cfg .btn-sm.primary');
   setLoading(btn, true);
   try {
-    await gasPost({ accion: 'agregarDocConfig', data: { tipoServicio: configServicioActivo, nombreDoc: nombre } });
-    if (!CONFIG[configServicioActivo]) CONFIG[configServicioActivo] = [];
-    CONFIG[configServicioActivo].push({ nombre, orden: CONFIG[configServicioActivo].length + 1 });
-    selectConfigServicio(configServicioActivo);
-    renderConfig();
+    await gasPost({ accion: 'crearDocumento', data: { Doc_Nombre: nombre, Doc_Descripcion: desc } });
+    DOCUMENTOS_CAT = await gasPost({ accion: 'getDocumentos' });
+    if (configServicioActivo) {
+      const srv = SERVICIOS_CAT.find(s => s.Servicio_ID === configServicioActivo);
+      if (srv) selectConfigServicio(srv.Servicio_ID, srv.Servicio_Nombre);
+    }
     closeModal('modal-nuevo-doc-cfg');
     document.getElementById('cfg-doc-nombre').value = '';
-    showToast('Documento agregado.');
+    showToast('Documento creado en el catálogo.');
   } catch(e) {
     showToast('Error: ' + e.message, 'error');
   } finally {
@@ -1941,32 +1990,10 @@ async function agregarDocCfg() {
   }
 }
 
-async function eliminarDocCfg(tipo, nombreDoc) {
-  if (!confirm(`¿Eliminar "${nombreDoc}" de "${tipo}"?`)) return;
-  try {
-    await gasPost({ accion: 'eliminarDocConfig', data: { tipoServicio: tipo, nombreDoc } });
-    CONFIG[tipo] = (CONFIG[tipo] || []).filter(d => (d.nombre || d) !== nombreDoc);
-    selectConfigServicio(tipo);
-    renderConfig();
-    showToast('Documento eliminado.');
-  } catch(e) {
-    showToast('Error: ' + e.message, 'error');
-  }
-}
-
-async function eliminarTipoServicio(tipo) {
-  if (!confirm(`¿Eliminar el tipo de servicio "${tipo}" y todos sus documentos?`)) return;
-  try {
-    await gasPost({ accion: 'eliminarTipoServicio', data: { nombre: tipo } });
-    delete CONFIG[tipo];
-    configServicioActivo = null;
-    renderConfig();
-    document.getElementById('config-panel').innerHTML = `<div class="empty-state"><div class="empty-icon">◈</div><div class="empty-text">Seleccioná un tipo de servicio</div></div>`;
-    showToast('Tipo eliminado.');
-  } catch(e) {
-    showToast('Error: ' + e.message, 'error');
-  }
-}
+// Funciones viejas redirigidas (compatibilidad)
+function agregarDocCfg() { crearDocumentoCat(); }
+function eliminarDocCfg() { showToast('Usá el toggle para activar/desactivar docs en la Matriz.'); }
+function eliminarTipoServicio() { showToast('Función próximamente.'); }
 
 
 // ═══════════════════════════════════════════════════════════
