@@ -1120,100 +1120,83 @@
 
 <script>
 // ═══════════════════════════════════════════════════════════
-// DATOS DEMO
+// 1 - CONFIGURACION
 // ═══════════════════════════════════════════════════════════
-let currentUser = { nombre: 'Mariano García', perfil: 'editor', initials: 'MG', empresa: null };
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbxUC2fvWNle-8IGfrD2y02Qyl_f6F1Wgysz7eYc6NRfl8O8y-ceWMQDmFfWLZBHugPUiQ/exec';
+
+// Usuario activo (login simulado — se reemplazará por SIA)
+let currentUser = null;
 let selectedPerfil = 'editor';
-let currentObraId = null;
+
+// Estado en memoria
+let OBRAS    = [];
+let SERVICIOS = {};   // { obraId: [ servicio ] }
+let CONFIG   = {};   // { tipoServicio: [ {nombre, orden} ] }
+
+let currentObraId       = null;
 let configServicioActivo = null;
 let selectedFileForUpload = null;
-let docToUpload = null;
+let docToUpload          = null;
 
-const PERFILES = {
-  editor:    { nombre: 'Admin Editor', initials: 'AE', empresa: null },
-  consultor: { nombre: 'Consultor HSE', initials: 'CH', empresa: null },
-  proveedor: { nombre: 'Proveedor SA', initials: 'PR', empresa: null }
+const PERFILES_DEMO = {
+  editor:    { nombre: 'Admin Editor',   initials: 'AE', perfil: 'editor' },
+  consultor: { nombre: 'Consultor HSE',  initials: 'CH', perfil: 'consultor' },
+  proveedor: { nombre: 'Proveedor Demo', initials: 'PR', perfil: 'proveedor' },
 };
-
-const EMPRESAS = ['Pamar', 'Saavedra', 'Symesa'];
-
-// Configuración: tipos de servicio y sus documentos requeridos
-let CONFIG = {
-  'Trabajos en altura': ['Seguro de vida', 'Habilitación altura', 'Certificado médico', 'EPP actualizado'],
-  'Servicio eléctrico': ['Matrícula habilitante', 'Seguro de vida', 'Certificado IRAM', 'ART vigente'],
-  'Transporte de materiales': ['Habilitación vehicular', 'Seguro automotor', 'Licencia conductor', 'Libro de ruta'],
-  'Obras civiles': ['Seguro de vida', 'ART vigente', 'Planos aprobados', 'Permiso municipal', 'Certificado de calidad'],
-};
-
-// Obras demo
-let OBRAS = [
-  { id: 'OBR-001', nombre: 'Planta Procesadora Norte', empresa: 'Pamar', estado: 'Activa' },
-  { id: 'OBR-002', nombre: 'Ampliación Depósito Central', empresa: 'Saavedra', estado: 'Activa' },
-  { id: 'OBR-003', nombre: 'Red Eléctrica Sector B', empresa: 'Symesa', estado: 'Activa' },
-  { id: 'OBR-004', nombre: 'Camino de Acceso Lote 7', empresa: 'Pamar', estado: 'Completada' },
-];
-
-// Servicios demo por obra
-let SERVICIOS = {
-  'OBR-001': [
-    { id: 'SRV-001', tipo: 'Trabajos en altura', proveedor: 'AlturaSafe SRL',
-      docs: [
-        { nombre: 'Seguro de vida', estado: 'aprobado', link: null },
-        { nombre: 'Habilitación altura', estado: 'aprobado', link: null },
-        { nombre: 'Certificado médico', estado: 'cargado', link: null },
-        { nombre: 'EPP actualizado', estado: 'pendiente', link: null },
-      ]},
-    { id: 'SRV-002', tipo: 'Servicio eléctrico', proveedor: 'ElectroMax SA',
-      docs: [
-        { nombre: 'Matrícula habilitante', estado: 'aprobado', link: null },
-        { nombre: 'Seguro de vida', estado: 'rechazado', link: null },
-        { nombre: 'Certificado IRAM', estado: 'pendiente', link: null },
-        { nombre: 'ART vigente', estado: 'pendiente', link: null },
-      ]},
-  ],
-  'OBR-002': [
-    { id: 'SRV-003', tipo: 'Obras civiles', proveedor: 'Construcciones Álvarez',
-      docs: [
-        { nombre: 'Seguro de vida', estado: 'aprobado', link: null },
-        { nombre: 'ART vigente', estado: 'aprobado', link: null },
-        { nombre: 'Planos aprobados', estado: 'cargado', link: null },
-        { nombre: 'Permiso municipal', estado: 'pendiente', link: null },
-        { nombre: 'Certificado de calidad', estado: 'pendiente', link: null },
-      ]},
-  ],
-  'OBR-003': [
-    { id: 'SRV-004', tipo: 'Servicio eléctrico', proveedor: 'VoltaGroup',
-      docs: [
-        { nombre: 'Matrícula habilitante', estado: 'aprobado', link: null },
-        { nombre: 'Seguro de vida', estado: 'aprobado', link: null },
-        { nombre: 'Certificado IRAM', estado: 'aprobado', link: null },
-        { nombre: 'ART vigente', estado: 'aprobado', link: null },
-      ]},
-  ],
-  'OBR-004': [
-    { id: 'SRV-005', tipo: 'Transporte de materiales', proveedor: 'Logística Sur',
-      docs: [
-        { nombre: 'Habilitación vehicular', estado: 'aprobado', link: null },
-        { nombre: 'Seguro automotor', estado: 'aprobado', link: null },
-        { nombre: 'Licencia conductor', estado: 'aprobado', link: null },
-        { nombre: 'Libro de ruta', estado: 'aprobado', link: null },
-      ]},
-  ],
-};
-
-// Log demo
-let LOG = [
-  { ts: '2025-06-10 09:14', user: 'mgarcia', accion: 'APROBÓ DOC', detalle: 'Seguro de vida — AlturaSafe SRL (OBR-001)' },
-  { ts: '2025-06-10 08:52', user: 'proveedor_voltag', accion: 'CARGÓ DOC', detalle: 'ART vigente — VoltaGroup (OBR-003)' },
-  { ts: '2025-06-09 16:30', user: 'mgarcia', accion: 'RECHAZÓ DOC', detalle: 'Seguro de vida — ElectroMax SA (OBR-001)' },
-  { ts: '2025-06-09 14:10', user: 'mgarcia', accion: 'CREÓ SERVICIO', detalle: 'Servicio eléctrico — ElectroMax SA (OBR-001)' },
-  { ts: '2025-06-09 11:00', user: 'mgarcia', accion: 'CREÓ OBRA', detalle: 'OBR-003 — Red Eléctrica Sector B (Symesa)' },
-  { ts: '2025-06-08 17:45', user: 'consultor_hse', accion: 'CONSULTÓ', detalle: 'Detalle OBR-002' },
-];
 
 
 // ═══════════════════════════════════════════════════════════
-// LOGIN
+// 2 - COMUNICACION CON GAS
+// ═══════════════════════════════════════════════════════════
+async function gasPost(payload) {
+  const resp = await fetch(GAS_URL, {
+    method: 'POST',
+    body: JSON.stringify({ ...payload, usuario: currentUser?.nombre || 'sistema' }),
+  });
+  const json = await resp.json();
+  if (!json.ok) throw new Error(json.error || 'Error en el servidor');
+  return json.data;
+}
+
+function showToast(msg, tipo = 'ok') {
+  let t = document.getElementById('toast');
+  if (!t) {
+    t = document.createElement('div');
+    t.id = 'toast';
+    t.style.cssText = `position:fixed;bottom:24px;right:24px;padding:12px 20px;font-family:var(--font-mono);
+      font-size:12px;z-index:999;border:1px solid;transition:opacity .3s;`;
+    document.body.appendChild(t);
+  }
+  t.textContent = msg;
+  t.style.opacity = '1';
+  if (tipo === 'ok') {
+    t.style.background = 'rgba(34,197,94,.15)';
+    t.style.borderColor = 'rgba(34,197,94,.5)';
+    t.style.color = 'var(--success)';
+  } else {
+    t.style.background = 'rgba(239,68,68,.15)';
+    t.style.borderColor = 'rgba(239,68,68,.5)';
+    t.style.color = 'var(--danger)';
+  }
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => { t.style.opacity = '0'; }, 3000);
+}
+
+function setLoading(btn, loading) {
+  if (!btn) return;
+  if (loading) {
+    btn._orig = btn.textContent;
+    btn.textContent = '...';
+    btn.disabled = true;
+  } else {
+    btn.textContent = btn._orig || btn.textContent;
+    btn.disabled = false;
+  }
+}
+
+
+// ═══════════════════════════════════════════════════════════
+// 3 - LOGIN (simulado — listo para conectar SIA)
 // ═══════════════════════════════════════════════════════════
 function setPerfil(p) {
   selectedPerfil = p;
@@ -1221,63 +1204,113 @@ function setPerfil(p) {
   event.target.classList.add('active');
 }
 
-function doLogin() {
-  currentUser = { ...PERFILES[selectedPerfil], perfil: selectedPerfil };
-  document.getElementById('login-screen').style.display = 'none';
-  document.getElementById('app').style.display = 'block';
-  initApp();
+async function doLogin() {
+  const btn = document.querySelector('.btn-primary');
+  setLoading(btn, true);
+  try {
+    currentUser = { ...PERFILES_DEMO[selectedPerfil] };
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
+    await initApp();
+  } catch(e) {
+    showToast('Error al iniciar sesión: ' + e.message, 'error');
+  } finally {
+    setLoading(btn, false);
+  }
 }
 
 function doLogout() {
+  currentUser = null;
+  OBRAS = []; SERVICIOS = {}; CONFIG = {};
   document.getElementById('login-screen').style.display = 'flex';
   document.getElementById('app').style.display = 'none';
 }
 
 
 // ═══════════════════════════════════════════════════════════
-// INIT APP
+// 4 - INIT APP
 // ═══════════════════════════════════════════════════════════
-function initApp() {
-  // Topbar
+async function initApp() {
   document.getElementById('top-avatar').textContent = currentUser.initials;
-  document.getElementById('top-name').textContent = currentUser.nombre;
-  document.getElementById('top-role').textContent = currentUser.perfil.toUpperCase();
+  document.getElementById('top-name').textContent   = currentUser.nombre;
+  document.getElementById('top-role').textContent   = currentUser.perfil.toUpperCase();
 
-  // Sidebar según perfil
-  const isEditor = currentUser.perfil === 'editor';
+  const isEditor    = currentUser.perfil === 'editor';
   const isProveedor = currentUser.perfil === 'proveedor';
-  document.getElementById('nav-section-admin').style.display = isEditor ? '' : 'none';
-  document.getElementById('btn-nueva-obra').style.display = isEditor ? '' : 'none';
-  document.getElementById('detalle-actions').style.display = isEditor ? '' : 'none';
 
-  // Dashboard subtitle
+  document.getElementById('nav-section-admin').style.display = isEditor ? '' : 'none';
+  document.getElementById('btn-nueva-obra').style.display    = isEditor ? '' : 'none';
+  document.getElementById('detalle-actions').style.display   = isEditor ? '' : 'none';
+
   if (isProveedor) {
     document.getElementById('dash-subtitle').textContent = '// Tu documentación pendiente';
   }
 
-  renderDashboard();
-  renderObras();
-  renderConfig();
-  renderLog();
   showView('dashboard');
+  await cargarTodo();
+}
+
+async function cargarTodo() {
+  try {
+    const [obras, config] = await Promise.all([
+      gasPost({ accion: 'getObras' }),
+      gasPost({ accion: 'getConfig' }),
+    ]);
+    OBRAS  = obras  || [];
+    CONFIG = config || {};
+
+    // Cargar servicios de todas las obras
+    SERVICIOS = {};
+    await Promise.all(OBRAS.map(async o => {
+      const srvs = await gasPost({ accion: 'getServicios', obraId: o.ID });
+      SERVICIOS[o.ID] = (srvs || []).map(normalizarServicio);
+    }));
+
+    renderDashboard();
+    renderObras();
+    renderConfig();
+    await cargarLog();
+  } catch(e) {
+    showToast('Error cargando datos: ' + e.message, 'error');
+  }
+}
+
+// Normaliza keys del GAS (mayúsculas) a minúsculas para el frontend
+function normalizarServicio(s) {
+  return {
+    id:       s.ID,
+    tipo:     s.TipoServicio,
+    proveedor: s.Proveedor,
+    estado:   s.Estado,
+    docs: (s.docs || []).map(d => ({
+      id:      d.ID,
+      nombre:  d.NombreDoc,
+      estado:  (d.Estado || 'Pendiente').toLowerCase(),
+      link:    d.LinkArchivo || null,
+    })),
+  };
+}
+
+function normalizarObra(o) {
+  return {
+    id:      o.ID,
+    nombre:  o.Nombre,
+    empresa: o.Empresa,
+    estado:  o.Estado,
+  };
 }
 
 
 // ═══════════════════════════════════════════════════════════
-// NAVEGACIÓN
+// 5 - NAVEGACION
 // ═══════════════════════════════════════════════════════════
 function showView(id) {
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-
-  const viewId = id === 'obra-detalle' ? 'obra-detalle' : id;
-  const el = document.getElementById('view-' + viewId);
+  const el  = document.getElementById('view-' + id);
   if (el) el.classList.add('active');
-
   const nav = document.getElementById('nav-' + id);
   if (nav) nav.classList.add('active');
-
-  // En detalle de obra, activar nav obras
   if (id === 'obra-detalle') {
     document.getElementById('nav-obras').classList.add('active');
   }
@@ -1285,16 +1318,17 @@ function showView(id) {
 
 
 // ═══════════════════════════════════════════════════════════
-// HELPERS
+// 6 - HELPERS RENDER
 // ═══════════════════════════════════════════════════════════
 function getDocsStats(obraId) {
   const servicios = SERVICIOS[obraId] || [];
   let total = 0, aprobados = 0, cargados = 0, rechazados = 0, pendientes = 0;
-  servicios.forEach(s => s.docs.forEach(d => {
+  servicios.forEach(s => (s.docs || []).forEach(d => {
     total++;
-    if (d.estado === 'aprobado') aprobados++;
-    else if (d.estado === 'cargado') cargados++;
-    else if (d.estado === 'rechazado') rechazados++;
+    const est = (d.estado || '').toLowerCase();
+    if (est === 'aprobado') aprobados++;
+    else if (est === 'cargado') cargados++;
+    else if (est === 'rechazado') rechazados++;
     else pendientes++;
   }));
   return { total, aprobados, cargados, rechazados, pendientes };
@@ -1302,64 +1336,59 @@ function getDocsStats(obraId) {
 
 function estadoBadge(estado) {
   const map = {
-    'Activa':    '<span class="badge badge-blue">Activa</span>',
-    'Completada':'<span class="badge badge-green">Completada</span>',
-    'Suspendida':'<span class="badge badge-amber">Suspendida</span>',
+    'Activa':     '<span class="badge badge-blue">Activa</span>',
+    'Completada': '<span class="badge badge-green">Completada</span>',
+    'Suspendida': '<span class="badge badge-amber">Suspendida</span>',
   };
   return map[estado] || `<span class="badge badge-gray">${estado}</span>`;
 }
 
 function docEstadoBadge(est) {
   const map = {
-    pendiente: ['dot-pending',  'Pendiente'],
-    cargado:   ['dot-uploaded', 'Cargado'],
-    aprobado:  ['dot-approved', 'Aprobado'],
-    rechazado: ['dot-rejected', 'Rechazado'],
+    pendiente:  ['dot-pending',  'Pendiente'],
+    cargado:    ['dot-uploaded', 'Cargado'],
+    aprobado:   ['dot-approved', 'Aprobado'],
+    rechazado:  ['dot-rejected', 'Rechazado'],
   };
-  const [cls, label] = map[est] || ['dot-pending', est];
+  const [cls, label] = map[(est||'').toLowerCase()] || ['dot-pending', est];
   return `<span class="doc-status"><span class="status-dot ${cls}"></span><span style="font-size:11px;font-family:var(--font-mono);color:var(--muted)">${label}</span></span>`;
 }
 
-function addLog(accion, detalle) {
-  const now = new Date();
-  const ts = now.toISOString().slice(0,16).replace('T',' ');
-  LOG.unshift({ ts, user: currentUser.initials.toLowerCase(), accion, detalle });
-  renderLog();
-}
-
 
 // ═══════════════════════════════════════════════════════════
-// RENDER DASHBOARD
+// 7 - DASHBOARD
 // ═══════════════════════════════════════════════════════════
 function renderDashboard() {
-  let obras = currentUser.perfil === 'proveedor'
-    ? OBRAS.filter(o => o.id === 'OBR-001') // demo: proveedor solo ve su obra
-    : OBRAS;
-
+  const obras = obrasVisibles();
   let totalPend = 0, totalAprov = 0, totalRech = 0;
   obras.forEach(o => {
-    const s = getDocsStats(o.id);
+    const s = getDocsStats(o.ID || o.id);
     totalPend  += s.pendientes + s.cargados;
     totalAprov += s.aprobados;
     totalRech  += s.rechazados;
   });
-
-  // stats
-  document.querySelectorAll('.stat-value')[0].textContent = obras.filter(o=>o.estado==='Activa').length;
+  document.querySelectorAll('.stat-value')[0].textContent = obras.filter(o=>(o.Estado||o.estado)==='Activa').length;
   document.querySelectorAll('.stat-value')[1].textContent = totalPend;
   document.querySelectorAll('.stat-value')[2].textContent = totalAprov;
   document.querySelectorAll('.stat-value')[3].textContent = totalRech;
 
-  // tabla
   const tbody = document.getElementById('dash-table-body');
+  if (!obras.length) {
+    tbody.innerHTML = `<tr><td colspan="5"><div class="empty-state"><div class="empty-icon">◫</div><div class="empty-text">Sin obras cargadas</div></div></td></tr>`;
+    return;
+  }
   tbody.innerHTML = obras.map(o => {
-    const s = getDocsStats(o.id);
+    const id  = o.ID || o.id;
+    const nom = o.Nombre || o.nombre;
+    const emp = o.Empresa || o.empresa;
+    const est = o.Estado  || o.estado;
+    const s   = getDocsStats(id);
     const pct = s.total > 0 ? Math.round((s.aprobados / s.total) * 100) : 0;
     const fillCls = pct === 100 ? 'ok' : pct > 60 ? '' : 'warn';
-    const srvCount = (SERVICIOS[o.id] || []).length;
-    return `<tr onclick="openObra('${o.id}')">
-      <td><strong>${o.nombre}</strong></td>
-      <td><span class="empresa-tag">${o.empresa}</span></td>
+    const srvCount = (SERVICIOS[id] || []).length;
+    return `<tr onclick="openObra('${id}')">
+      <td><strong>${nom}</strong></td>
+      <td><span class="empresa-tag">${emp}</span></td>
       <td><span style="font-family:var(--font-mono)">${srvCount}</span></td>
       <td>
         <div class="doc-progress">
@@ -1367,46 +1396,55 @@ function renderDashboard() {
           <span class="progress-text">${s.aprobados}/${s.total}</span>
         </div>
       </td>
-      <td>${estadoBadge(o.estado)}</td>
+      <td>${estadoBadge(est)}</td>
     </tr>`;
   }).join('');
 }
 
 
 // ═══════════════════════════════════════════════════════════
-// RENDER OBRAS
+// 8 - OBRAS
 // ═══════════════════════════════════════════════════════════
+function obrasVisibles() {
+  // Proveedor solo ve sus obras (por ahora todas — se filtrará al conectar SIA)
+  return OBRAS;
+}
+
 function renderObras(filter = '') {
-  let obras = currentUser.perfil === 'proveedor'
-    ? OBRAS.filter(o => o.id === 'OBR-001')
-    : OBRAS;
-  if (filter) obras = obras.filter(o =>
-    o.nombre.toLowerCase().includes(filter.toLowerCase()) ||
-    o.id.toLowerCase().includes(filter.toLowerCase()) ||
-    o.empresa.toLowerCase().includes(filter.toLowerCase())
-  );
+  let obras = obrasVisibles();
+  if (filter) obras = obras.filter(o => {
+    const id  = (o.ID  || o.id  || '').toLowerCase();
+    const nom = (o.Nombre || o.nombre || '').toLowerCase();
+    const emp = (o.Empresa || o.empresa || '').toLowerCase();
+    const f   = filter.toLowerCase();
+    return id.includes(f) || nom.includes(f) || emp.includes(f);
+  });
   const tbody = document.getElementById('obras-table-body');
   if (!obras.length) {
     tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state"><div class="empty-icon">◫</div><div class="empty-text">Sin obras</div></div></td></tr>`;
     return;
   }
   tbody.innerHTML = obras.map(o => {
-    const s = getDocsStats(o.id);
+    const id  = o.ID || o.id;
+    const nom = o.Nombre || o.nombre;
+    const emp = o.Empresa || o.empresa;
+    const est = o.Estado  || o.estado;
+    const s   = getDocsStats(id);
     const pct = s.total > 0 ? Math.round((s.aprobados / s.total) * 100) : 0;
     const fillCls = pct === 100 ? 'ok' : pct > 60 ? '' : 'warn';
-    const srvCount = (SERVICIOS[o.id] || []).length;
-    return `<tr onclick="openObra('${o.id}')">
-      <td><span style="font-family:var(--font-mono);color:var(--muted)">${o.id}</span></td>
-      <td><strong>${o.nombre}</strong></td>
-      <td><span class="empresa-tag">${o.empresa}</span></td>
-      <td><span style="font-family:var(--font-mono)">${srvCount} servicio${srvCount !== 1 ? 's' : ''}</span></td>
+    const srvCount = (SERVICIOS[id] || []).length;
+    return `<tr onclick="openObra('${id}')">
+      <td><span style="font-family:var(--font-mono);color:var(--muted)">${id}</span></td>
+      <td><strong>${nom}</strong></td>
+      <td><span class="empresa-tag">${emp}</span></td>
+      <td><span style="font-family:var(--font-mono)">${srvCount} servicio${srvCount!==1?'s':''}</span></td>
       <td>
         <div class="doc-progress">
           <div class="progress-bar"><div class="progress-fill ${fillCls}" style="width:${pct}%"></div></div>
           <span class="progress-text">${s.aprobados}/${s.total} aprobados</span>
         </div>
       </td>
-      <td>${estadoBadge(o.estado)}</td>
+      <td>${estadoBadge(est)}</td>
     </tr>`;
   }).join('');
 }
@@ -1415,39 +1453,75 @@ function filtrarObras() {
   renderObras(document.getElementById('search-obras').value);
 }
 
+async function crearObra() {
+  const codigo  = document.getElementById('new-obra-codigo').value.trim();
+  const nombre  = document.getElementById('new-obra-nombre').value.trim();
+  const empresa = document.getElementById('new-obra-empresa').value;
+  if (!codigo || !nombre || !empresa) return showToast('Completá todos los campos.', 'error');
+  const btn = document.querySelector('#modal-nueva-obra .btn-sm.primary');
+  setLoading(btn, true);
+  try {
+    await gasPost({ accion: 'crearObra', data: { nombre, empresa, notas: '' } });
+    // Recargar obras
+    const obras = await gasPost({ accion: 'getObras' });
+    OBRAS = obras || [];
+    SERVICIOS[codigo] = [];
+    renderDashboard();
+    renderObras();
+    closeModal('modal-nueva-obra');
+    document.getElementById('new-obra-codigo').value = '';
+    document.getElementById('new-obra-nombre').value = '';
+    document.getElementById('new-obra-empresa').value = '';
+    showToast('Obra creada correctamente.');
+  } catch(e) {
+    showToast('Error: ' + e.message, 'error');
+  } finally {
+    setLoading(btn, false);
+  }
+}
+
 
 // ═══════════════════════════════════════════════════════════
-// DETALLE OBRA
+// 9 - DETALLE OBRA
 // ═══════════════════════════════════════════════════════════
-function openObra(id) {
+async function openObra(id) {
   currentObraId = id;
-  const obra = OBRAS.find(o => o.id === id);
-  const servicios = SERVICIOS[id] || [];
+  const obra = OBRAS.find(o => (o.ID||o.id) === id);
+  if (!obra) return;
+  const nom = obra.Nombre || obra.nombre;
+  const emp = obra.Empresa || obra.empresa;
+  const est = obra.Estado  || obra.estado;
 
-  document.getElementById('detalle-nombre').textContent = obra.nombre;
-  document.getElementById('detalle-badge').innerHTML = estadoBadge(obra.estado);
+  document.getElementById('detalle-nombre').textContent = nom;
+  document.getElementById('detalle-badge').innerHTML    = estadoBadge(est);
   document.getElementById('detalle-meta').innerHTML = `
     <div class="obra-meta-item">
       <span class="obra-meta-label">Código</span>
-      <span class="obra-meta-value" style="font-family:var(--font-mono)">${obra.id}</span>
+      <span class="obra-meta-value" style="font-family:var(--font-mono)">${id}</span>
     </div>
     <div class="obra-meta-item">
       <span class="obra-meta-label">Empresa</span>
-      <span class="obra-meta-value">${obra.empresa}</span>
+      <span class="obra-meta-value">${emp}</span>
     </div>
     <div class="obra-meta-item">
       <span class="obra-meta-label">Servicios</span>
-      <span class="obra-meta-value" style="font-family:var(--font-mono)">${servicios.length}</span>
-    </div>
-  `;
+      <span class="obra-meta-value" style="font-family:var(--font-mono)" id="detalle-srv-count">—</span>
+    </div>`;
 
-  // Editor actions
-  document.getElementById('detalle-actions').style.display =
-    currentUser.perfil === 'editor' ? '' : 'none';
-
-  renderServicios(servicios);
+  document.getElementById('detalle-actions').style.display = currentUser.perfil === 'editor' ? '' : 'none';
   showView('obra-detalle');
-  addLog('CONSULTÓ OBRA', `${obra.id} — ${obra.nombre}`);
+
+  // Cargar servicios frescos del GAS
+  const grid = document.getElementById('servicios-grid');
+  grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="empty-icon" style="font-size:20px">⟳</div><div class="empty-text">Cargando...</div></div>`;
+  try {
+    const srvs = await gasPost({ accion: 'getServicios', obraId: id });
+    SERVICIOS[id] = (srvs || []).map(normalizarServicio);
+    document.getElementById('detalle-srv-count').textContent = SERVICIOS[id].length;
+    renderServicios(SERVICIOS[id]);
+  } catch(e) {
+    showToast('Error cargando servicios: ' + e.message, 'error');
+  }
 }
 
 function renderServicios(servicios) {
@@ -1460,31 +1534,38 @@ function renderServicios(servicios) {
     </div>`;
     return;
   }
-  const isEditor = currentUser.perfil === 'editor';
+  const isEditor    = currentUser.perfil === 'editor';
   const isProveedor = currentUser.perfil === 'proveedor';
   grid.innerHTML = servicios.map(srv => {
     const docItems = srv.docs.map(doc => {
+      const est = (doc.estado || '').toLowerCase();
       let actions = '';
-      if (isEditor && (doc.estado === 'cargado')) {
+      if (isEditor && est === 'cargado') {
         actions = `<div style="display:flex;gap:4px">
-          <button class="btn-icon" style="color:var(--success);border-color:rgba(34,197,94,.4)" title="Aprobar" onclick="cambiarEstadoDoc('${srv.id}','${doc.nombre}','aprobado',event)">✓</button>
-          <button class="btn-icon" style="color:var(--danger);border-color:rgba(239,68,68,.4)" title="Rechazar" onclick="cambiarEstadoDoc('${srv.id}','${doc.nombre}','rechazado',event)">✕</button>
+          <button class="btn-icon" style="color:var(--success);border-color:rgba(34,197,94,.4)" title="Aprobar"
+            onclick="cambiarEstadoDoc('${doc.id}','${srv.id}','Aprobado','${doc.nombre}','${srv.proveedor}',event)">✓</button>
+          <button class="btn-icon" style="color:var(--danger);border-color:rgba(239,68,68,.4)" title="Rechazar"
+            onclick="cambiarEstadoDoc('${doc.id}','${srv.id}','Rechazado','${doc.nombre}','${srv.proveedor}',event)">✕</button>
         </div>`;
-      } else if ((isProveedor || isEditor) && (doc.estado === 'pendiente' || doc.estado === 'rechazado')) {
-        actions = `<button class="btn-sm" style="font-size:10px;padding:4px 10px" onclick="abrirSubirDoc('${srv.id}','${doc.nombre}',event)">Subir</button>`;
+      } else if ((isProveedor || isEditor) && (est === 'pendiente' || est === 'rechazado')) {
+        actions = `<button class="btn-sm" style="font-size:10px;padding:4px 10px"
+          onclick="abrirSubirDoc('${doc.id}','${srv.id}','${doc.nombre}','${srv.proveedor}',event)">Subir</button>`;
       } else if (doc.link) {
         actions = `<a href="${doc.link}" target="_blank" style="font-size:10px;font-family:var(--font-mono);color:var(--accent)">Ver →</a>`;
       }
       return `<li class="doc-item">
         <span class="doc-name">${doc.nombre}</span>
         <div style="display:flex;align-items:center;gap:8px">
-          ${docEstadoBadge(doc.estado)}
+          ${docEstadoBadge(est)}
           ${actions}
         </div>
       </li>`;
     }).join('');
 
-    const stats = srv.docs.reduce((a,d) => { a[d.estado] = (a[d.estado]||0)+1; return a; }, {});
+    const stats = srv.docs.reduce((a,d) => {
+      const e = (d.estado||'').toLowerCase();
+      a[e] = (a[e]||0)+1; return a;
+    }, {});
     return `<div class="servicio-card">
       <div class="servicio-card-header">
         <div>
@@ -1493,7 +1574,7 @@ function renderServicios(servicios) {
         </div>
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
           ${stats.rechazado ? `<span class="badge badge-red">⚠ ${stats.rechazado} rechazado${stats.rechazado>1?'s':''}</span>` : ''}
-          ${stats.cargado ? `<span class="badge badge-amber">${stats.cargado} para revisar</span>` : ''}
+          ${stats.cargado   ? `<span class="badge badge-amber">${stats.cargado} para revisar</span>` : ''}
           ${!stats.rechazado && !stats.cargado && !stats.pendiente ? `<span class="badge badge-green">Completo</span>` : ''}
         </div>
       </div>
@@ -1506,29 +1587,30 @@ function renderServicios(servicios) {
 
 
 // ═══════════════════════════════════════════════════════════
-// ACCIONES DOCS
+// 10 - ACCIONES DOCUMENTOS
 // ═══════════════════════════════════════════════════════════
-function cambiarEstadoDoc(srvId, docNombre, nuevoEstado, e) {
+async function cambiarEstadoDoc(docId, srvId, nuevoEstado, nombreDoc, proveedor, e) {
   e.stopPropagation();
-  for (const obraId in SERVICIOS) {
-    const srv = SERVICIOS[obraId].find(s => s.id === srvId);
-    if (srv) {
-      const doc = srv.docs.find(d => d.nombre === docNombre);
-      if (doc) {
-        doc.estado = nuevoEstado;
-        addLog(nuevoEstado === 'aprobado' ? 'APROBÓ DOC' : 'RECHAZÓ DOC',
-          `${docNombre} — ${srv.proveedor}`);
-        renderServicios(SERVICIOS[currentObraId]);
-        renderDashboard();
-        return;
-      }
-    }
+  try {
+    await gasPost({
+      accion: 'cambiarEstadoDoc',
+      data: { docId, servicioId: srvId, obraId: currentObraId, nuevoEstado, nombreDoc, proveedor },
+    });
+    // Recargar servicios de la obra
+    const srvs = await gasPost({ accion: 'getServicios', obraId: currentObraId });
+    SERVICIOS[currentObraId] = (srvs || []).map(normalizarServicio);
+    renderServicios(SERVICIOS[currentObraId]);
+    renderDashboard();
+    showToast(nuevoEstado === 'Aprobado' ? '✓ Documento aprobado' : '✕ Documento rechazado',
+              nuevoEstado === 'Aprobado' ? 'ok' : 'error');
+  } catch(e) {
+    showToast('Error: ' + e.message, 'error');
   }
 }
 
-function abrirSubirDoc(srvId, docNombre, e) {
+function abrirSubirDoc(docId, srvId, docNombre, proveedor, e) {
   e.stopPropagation();
-  docToUpload = { srvId, docNombre };
+  docToUpload = { docId, srvId, docNombre, proveedor };
   document.getElementById('subir-doc-title').textContent = `CARGAR — ${docNombre}`;
   document.getElementById('file-selected').style.display = 'none';
   document.getElementById('btn-subir-doc').disabled = true;
@@ -1549,6 +1631,11 @@ function handleFileSelect(e) {
 }
 
 function setFile(file) {
+  // Validar tamaño 15MB
+  if (file.size > 15 * 1024 * 1024) {
+    showToast('El archivo supera los 15MB. Comprimilo antes de subir.', 'error');
+    return;
+  }
   selectedFileForUpload = file;
   const el = document.getElementById('file-selected');
   el.style.display = 'block';
@@ -1560,54 +1647,53 @@ document.getElementById('drop-zone').addEventListener('click', () => {
   document.getElementById('file-input').click();
 });
 
-function subirDoc() {
+async function subirDoc() {
   if (!selectedFileForUpload || !docToUpload) return;
-  // Demo: simulamos link
-  const fakeLink = `https://drive.google.com/file/${Math.random().toString(36).slice(2)}`;
-  for (const obraId in SERVICIOS) {
-    const srv = SERVICIOS[obraId].find(s => s.id === docToUpload.srvId);
-    if (srv) {
-      const doc = srv.docs.find(d => d.nombre === docToUpload.docNombre);
-      if (doc) {
-        doc.estado = 'cargado';
-        doc.link = fakeLink;
-        addLog('CARGÓ DOC', `${doc.nombre} — ${srv.proveedor}`);
-        renderServicios(SERVICIOS[currentObraId]);
-        renderDashboard();
-      }
-    }
+  const btn = document.getElementById('btn-subir-doc');
+  setLoading(btn, true);
+  try {
+    // Convertir a base64
+    const base64 = await new Promise((res, rej) => {
+      const r = new FileReader();
+      r.onload  = () => res(r.result.split(',')[1]);
+      r.onerror = () => rej(new Error('Error leyendo archivo'));
+      r.readAsDataURL(selectedFileForUpload);
+    });
+
+    await gasPost({
+      accion: 'subirArchivo',
+      data: {
+        docId:         docToUpload.docId,
+        servicioId:    docToUpload.srvId,
+        obraId:        currentObraId,
+        nombreDoc:     docToUpload.docNombre,
+        nombreArchivo: selectedFileForUpload.name,
+        mimeType:      selectedFileForUpload.type || 'application/octet-stream',
+        base64,
+      },
+    });
+
+    // Recargar servicios
+    const srvs = await gasPost({ accion: 'getServicios', obraId: currentObraId });
+    SERVICIOS[currentObraId] = (srvs || []).map(normalizarServicio);
+    renderServicios(SERVICIOS[currentObraId]);
+    renderDashboard();
+    closeModal('modal-subir-doc');
+    showToast('✓ Archivo subido correctamente.');
+    docToUpload = null;
+  } catch(e) {
+    showToast('Error subiendo archivo: ' + e.message, 'error');
+  } finally {
+    setLoading(btn, false);
   }
-  closeModal('modal-subir-doc');
-  docToUpload = null;
 }
 
 
 // ═══════════════════════════════════════════════════════════
-// NUEVA OBRA
-// ═══════════════════════════════════════════════════════════
-function crearObra() {
-  const codigo  = document.getElementById('new-obra-codigo').value.trim();
-  const nombre  = document.getElementById('new-obra-nombre').value.trim();
-  const empresa = document.getElementById('new-obra-empresa').value;
-  if (!codigo || !nombre || !empresa) return alert('Completá todos los campos.');
-  OBRAS.push({ id: codigo, nombre, empresa, estado: 'Activa' });
-  SERVICIOS[codigo] = [];
-  addLog('CREÓ OBRA', `${codigo} — ${nombre} (${empresa})`);
-  renderDashboard();
-  renderObras();
-  closeModal('modal-nueva-obra');
-  document.getElementById('new-obra-codigo').value = '';
-  document.getElementById('new-obra-nombre').value = '';
-  document.getElementById('new-obra-empresa').value = '';
-}
-
-
-// ═══════════════════════════════════════════════════════════
-// NUEVO SERVICIO
+// 11 - NUEVO SERVICIO
 // ═══════════════════════════════════════════════════════════
 function openModal(id) {
   if (id === 'modal-nuevo-servicio') {
-    // Cargar tipos en el select
     const sel = document.getElementById('new-srv-tipo');
     sel.innerHTML = '<option value="">Seleccioná tipo...</option>';
     Object.keys(CONFIG).forEach(t => {
@@ -1619,123 +1705,189 @@ function openModal(id) {
 }
 
 function previewDocs() {
-  const tipo = document.getElementById('new-srv-tipo').value;
+  const tipo    = document.getElementById('new-srv-tipo').value;
   const preview = document.getElementById('docs-preview');
   if (!tipo) { preview.style.display = 'none'; return; }
   const docs = CONFIG[tipo] || [];
   document.getElementById('docs-preview-list').innerHTML = docs.map(d =>
-    `<div style="padding:5px 0;border-bottom:1px solid var(--border);font-size:12px;color:var(--muted);font-family:var(--font-mono)">· ${d}</div>`
+    `<div style="padding:5px 0;border-bottom:1px solid var(--border);font-size:12px;color:var(--muted);font-family:var(--font-mono)">· ${d.nombre || d}</div>`
   ).join('');
   preview.style.display = 'block';
 }
 
-function crearServicio() {
-  const tipo = document.getElementById('new-srv-tipo').value;
+async function crearServicio() {
+  const tipo      = document.getElementById('new-srv-tipo').value;
   const proveedor = document.getElementById('new-srv-proveedor').value.trim();
-  if (!tipo || !proveedor) return alert('Completá todos los campos.');
-  const docs = (CONFIG[tipo] || []).map(nombre => ({ nombre, estado: 'pendiente', link: null }));
-  const newId = 'SRV-' + String(Math.floor(Math.random()*900)+100);
-  if (!SERVICIOS[currentObraId]) SERVICIOS[currentObraId] = [];
-  SERVICIOS[currentObraId].push({ id: newId, tipo, proveedor, docs });
-  addLog('CREÓ SERVICIO', `${tipo} — ${proveedor}`);
-  renderServicios(SERVICIOS[currentObraId]);
-  renderDashboard();
-  closeModal('modal-nuevo-servicio');
+  if (!tipo || !proveedor) return showToast('Completá todos los campos.', 'error');
+  const btn = document.querySelector('#modal-nuevo-servicio .btn-sm.primary');
+  setLoading(btn, true);
+  try {
+    await gasPost({ accion: 'crearServicio', data: { obraId: currentObraId, tipoServicio: tipo, proveedor } });
+    const srvs = await gasPost({ accion: 'getServicios', obraId: currentObraId });
+    SERVICIOS[currentObraId] = (srvs || []).map(normalizarServicio);
+    document.getElementById('detalle-srv-count').textContent = SERVICIOS[currentObraId].length;
+    renderServicios(SERVICIOS[currentObraId]);
+    renderDashboard();
+    closeModal('modal-nuevo-servicio');
+    document.getElementById('new-srv-proveedor').value = '';
+    showToast('Servicio creado con ' + (CONFIG[tipo]||[]).length + ' documentos requeridos.');
+  } catch(e) {
+    showToast('Error: ' + e.message, 'error');
+  } finally {
+    setLoading(btn, false);
+  }
 }
 
 
 // ═══════════════════════════════════════════════════════════
-// CONFIGURACIÓN
+// 12 - CONFIGURACION
 // ═══════════════════════════════════════════════════════════
 function renderConfig() {
   const list = document.getElementById('config-servicio-list');
   list.innerHTML = Object.keys(CONFIG).map(tipo => {
-    const cnt = CONFIG[tipo].length;
+    const cnt = (CONFIG[tipo] || []).length;
     return `<div class="config-servicio-item ${configServicioActivo === tipo ? 'active' : ''}"
               onclick="selectConfigServicio('${tipo}')">
       <span>${tipo}</span>
       <span class="config-doc-count">${cnt}</span>
     </div>`;
-  }).join('');
+  }).join('') || `<div style="font-size:12px;color:var(--muted);padding:10px">Sin tipos configurados</div>`;
 }
 
 function selectConfigServicio(tipo) {
   configServicioActivo = tipo;
   renderConfig();
   const panel = document.getElementById('config-panel');
-  const docs = CONFIG[tipo];
+  const docs  = CONFIG[tipo] || [];
   panel.innerHTML = `
     <div class="config-panel-header">
       <div class="config-panel-title">${tipo}</div>
-      <button class="btn-sm primary" onclick="openModal('modal-nuevo-doc-cfg')">+ Agregar doc</button>
+      <div style="display:flex;gap:8px">
+        <button class="btn-sm primary" onclick="openModal('modal-nuevo-doc-cfg')">+ Agregar doc</button>
+        <button class="btn-sm" style="border-color:rgba(239,68,68,.4);color:var(--danger)" onclick="eliminarTipoServicio('${tipo}')">Eliminar tipo</button>
+      </div>
     </div>
-    ${docs.length === 0 ? '<div class="empty-state"><div class="empty-icon">◫</div><div class="empty-text">Sin documentos configurados</div></div>' :
-      docs.map((doc, i) => `
+    ${docs.length === 0
+      ? '<div class="empty-state"><div class="empty-icon">◫</div><div class="empty-text">Sin documentos configurados</div></div>'
+      : docs.map((doc, i) => `
         <div class="config-doc-row">
-          <span>· ${doc}</span>
-          <button class="btn-icon" title="Eliminar" onclick="eliminarDocCfg('${tipo}',${i})">✕</button>
+          <span>· ${doc.nombre || doc}</span>
+          <button class="btn-icon" title="Eliminar" onclick="eliminarDocCfg('${tipo}','${doc.nombre || doc}')">✕</button>
         </div>`).join('')
     }`;
 }
 
-function crearTipoServicio() {
+async function crearTipoServicio() {
   const nombre = document.getElementById('cfg-srv-nombre').value.trim();
-  if (!nombre) return alert('Ingresá un nombre.');
-  if (CONFIG[nombre]) return alert('Ya existe ese tipo.');
-  CONFIG[nombre] = [];
-  addLog('CREÓ TIPO SERVICIO', nombre);
-  renderConfig();
-  closeModal('modal-nuevo-servicio-cfg');
-  document.getElementById('cfg-srv-nombre').value = '';
+  if (!nombre) return showToast('Ingresá un nombre.', 'error');
+  if (CONFIG[nombre]) return showToast('Ya existe ese tipo.', 'error');
+  const btn = document.querySelector('#modal-nuevo-servicio-cfg .btn-sm.primary');
+  setLoading(btn, true);
+  try {
+    await gasPost({ accion: 'crearTipoServicio', data: { nombre } });
+    CONFIG[nombre] = [];
+    renderConfig();
+    closeModal('modal-nuevo-servicio-cfg');
+    document.getElementById('cfg-srv-nombre').value = '';
+    showToast('Tipo de servicio creado.');
+  } catch(e) {
+    showToast('Error: ' + e.message, 'error');
+  } finally {
+    setLoading(btn, false);
+  }
 }
 
-function agregarDocCfg() {
+async function agregarDocCfg() {
   const nombre = document.getElementById('cfg-doc-nombre').value.trim();
-  if (!nombre) return alert('Ingresá un nombre.');
+  if (!nombre) return showToast('Ingresá un nombre.', 'error');
   if (!configServicioActivo) return;
-  CONFIG[configServicioActivo].push(nombre);
-  addLog('AGREGÓ DOC A TIPO', `${nombre} → ${configServicioActivo}`);
-  selectConfigServicio(configServicioActivo);
-  renderConfig();
-  closeModal('modal-nuevo-doc-cfg');
-  document.getElementById('cfg-doc-nombre').value = '';
+  const btn = document.querySelector('#modal-nuevo-doc-cfg .btn-sm.primary');
+  setLoading(btn, true);
+  try {
+    await gasPost({ accion: 'agregarDocConfig', data: { tipoServicio: configServicioActivo, nombreDoc: nombre } });
+    if (!CONFIG[configServicioActivo]) CONFIG[configServicioActivo] = [];
+    CONFIG[configServicioActivo].push({ nombre, orden: CONFIG[configServicioActivo].length + 1 });
+    selectConfigServicio(configServicioActivo);
+    renderConfig();
+    closeModal('modal-nuevo-doc-cfg');
+    document.getElementById('cfg-doc-nombre').value = '';
+    showToast('Documento agregado.');
+  } catch(e) {
+    showToast('Error: ' + e.message, 'error');
+  } finally {
+    setLoading(btn, false);
+  }
 }
 
-function eliminarDocCfg(tipo, idx) {
-  if (!confirm('¿Eliminar este documento del tipo de servicio?')) return;
-  const nombre = CONFIG[tipo][idx];
-  CONFIG[tipo].splice(idx, 1);
-  addLog('ELIMINÓ DOC DE TIPO', `${nombre} ← ${tipo}`);
-  selectConfigServicio(tipo);
-  renderConfig();
+async function eliminarDocCfg(tipo, nombreDoc) {
+  if (!confirm(`¿Eliminar "${nombreDoc}" de "${tipo}"?`)) return;
+  try {
+    await gasPost({ accion: 'eliminarDocConfig', data: { tipoServicio: tipo, nombreDoc } });
+    CONFIG[tipo] = (CONFIG[tipo] || []).filter(d => (d.nombre || d) !== nombreDoc);
+    selectConfigServicio(tipo);
+    renderConfig();
+    showToast('Documento eliminado.');
+  } catch(e) {
+    showToast('Error: ' + e.message, 'error');
+  }
+}
+
+async function eliminarTipoServicio(tipo) {
+  if (!confirm(`¿Eliminar el tipo de servicio "${tipo}" y todos sus documentos?`)) return;
+  try {
+    await gasPost({ accion: 'eliminarTipoServicio', data: { nombre: tipo } });
+    delete CONFIG[tipo];
+    configServicioActivo = null;
+    renderConfig();
+    document.getElementById('config-panel').innerHTML = `<div class="empty-state"><div class="empty-icon">◈</div><div class="empty-text">Seleccioná un tipo de servicio</div></div>`;
+    showToast('Tipo eliminado.');
+  } catch(e) {
+    showToast('Error: ' + e.message, 'error');
+  }
 }
 
 
 // ═══════════════════════════════════════════════════════════
-// LOG
+// 13 - LOG
 // ═══════════════════════════════════════════════════════════
-function renderLog() {
+async function cargarLog() {
+  try {
+    const log = await gasPost({ accion: 'getLog', limite: 100 });
+    renderLog(log || []);
+  } catch(e) { /* no crítico */ }
+}
+
+function renderLog(log) {
   const body = document.getElementById('log-body');
-  body.innerHTML = LOG.slice(0, 50).map(l => `
-    <div class="log-row">
-      <span class="log-ts">${l.ts}</span>
-      <span class="log-user">${l.user}</span>
-      <span>${l.accion === 'APROBÓ DOC' ? '<span class="badge badge-green">'+l.accion+'</span>' :
-               l.accion === 'RECHAZÓ DOC' ? '<span class="badge badge-red">'+l.accion+'</span>' :
-               l.accion === 'CARGÓ DOC' ? '<span class="badge badge-amber">'+l.accion+'</span>' :
-               '<span class="badge badge-gray">'+l.accion+'</span>'}</span>
-      <span style="color:var(--muted)">${l.detalle}</span>
-    </div>`).join('');
+  if (!log || !log.length) {
+    body.innerHTML = `<div class="empty-state"><div class="empty-icon">≡</div><div class="empty-text">Sin registros</div></div>`;
+    return;
+  }
+  body.innerHTML = log.map(l => {
+    const accion  = l.Accion  || l.accion  || '';
+    const usuario = l.Usuario || l.usuario || '';
+    const detalle = l.Detalle || l.detalle || '';
+    const ts      = l.Timestamp || l.ts    || '';
+    const badgeCls =
+      accion.includes('APROBÓ')   ? 'badge-green' :
+      accion.includes('RECHAZÓ')  ? 'badge-red'   :
+      accion.includes('CARGÓ')    ? 'badge-amber'  : 'badge-gray';
+    return `<div class="log-row">
+      <span class="log-ts">${ts}</span>
+      <span class="log-user">${usuario}</span>
+      <span><span class="badge ${badgeCls}">${accion}</span></span>
+      <span style="color:var(--muted)">${detalle}</span>
+    </div>`;
+  }).join('');
 }
 
 
 // ═══════════════════════════════════════════════════════════
-// MODALES
+// 14 - MODALES
 // ═══════════════════════════════════════════════════════════
 function closeModal(id) {
   document.getElementById(id).classList.remove('open');
 }
-// Cerrar al click fuera
 document.querySelectorAll('.modal-overlay').forEach(overlay => {
   overlay.addEventListener('click', e => {
     if (e.target === overlay) overlay.classList.remove('open');
