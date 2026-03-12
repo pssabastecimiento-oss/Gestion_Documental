@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>GestDoc — Gestión Documental</title>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:ital,opsz,wght@0,6..12,300;0,6..12,400;0,6..12,500;0,6..12,600;0,6..12,700;1,6..12,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
 <style>
   :root {
     --bg:        #0f1117;
@@ -18,8 +18,8 @@
     --warning:   #f59e0b;
     --text:      #e8eaf0;
     --muted:     #6b7a99;
-    --font-sans: 'IBM Plex Sans', sans-serif;
-    --font-mono: 'IBM Plex Mono', monospace;
+    --font-sans: 'Nunito Sans', sans-serif;
+    --font-mono: 'DM Mono', monospace;
   }
 
   /* ── TEMA CLARO ───────────────────────────────────────── */
@@ -29,7 +29,7 @@
     --surface2:#e8eaf0;
     --border:  #d0d5e8;
     --text:    #1a1f35;
-    --muted:   #7a84a0;
+    --muted:   #3d4760;
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; transition: background-color .2s, border-color .2s, color .15s; }
@@ -39,8 +39,8 @@
     color: var(--text);
     font-family: var(--font-sans);
     font-size: 14px;
-    min-height: 100vh;
-    overflow-x: hidden;
+    height: 100vh;
+    overflow: hidden;
   }
 
   /* ── LOGIN ────────────────────────────────────────────── */
@@ -161,7 +161,16 @@
   .btn-primary:hover { opacity: .85; }
 
   /* ── LAYOUT PRINCIPAL ─────────────────────────────────── */
-  #app { display: none; min-height: 100vh; }
+  #app {
+    display: none;
+    flex-direction: column;
+    position: fixed;
+    inset: 0;
+    overflow: hidden;
+  }
+  #app.visible {
+    display: flex;
+  }
 
   /* Topbar — siempre oscura independiente del tema */
   .topbar {
@@ -169,11 +178,11 @@
     border-bottom: 1px solid #2a3045 !important;
     padding: 0 24px;
     height: 52px;
+    min-height: 52px;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    position: sticky;
-    top: 0;
+    flex-shrink: 0;
     z-index: 100;
   }
   .topbar .user-name,
@@ -255,41 +264,12 @@
   }
 
   /* Tabs configuración */
-  .config-tabs {
-    display: flex;
-    border-bottom: 1px solid var(--border);
-    margin-bottom: 24px;
-  }
-  .config-tab {
-    padding: 10px 20px;
-    font-family: var(--font-mono);
-    font-size: 12px;
-    color: var(--muted);
-    cursor: pointer;
-    border-bottom: 2px solid transparent;
-    margin-bottom: -1px;
-    transition: all .15s;
-    text-transform: uppercase;
-    letter-spacing: .8px;
-  }
-  .config-tab:hover { color: var(--text); }
-  .config-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
-
-  .config-tab-content { display: none; }
-  .config-tab-content.active { display: block; }
-
-  /* General config */
-  .general-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    padding: 24px;
-    max-width: 500px;
-  }
-
   /* Sidebar + main */
   .layout {
     display: flex;
-    min-height: calc(100vh - 52px);
+    flex: 1;
+    overflow: hidden;
+    min-height: 0;
   }
   .sidebar {
     width: 220px;
@@ -298,6 +278,8 @@
     padding: 20px 0 60px;
     flex-shrink: 0;
     position: relative;
+    overflow-y: auto;
+    height: 100%;
   }
   .sidebar-section {
     padding: 0 16px;
@@ -326,37 +308,59 @@
   }
   .nav-item:hover { color: var(--text); background: var(--surface2); }
   .nav-item.active { color: var(--accent); border-left-color: var(--accent); background: rgba(59,130,246,.06); }
-  .nav-icon { font-size: 15px; width: 18px; text-align: center; flex-shrink: 0; }
+  .nav-icon { width: 16px; height: 16px; flex-shrink: 0; opacity: .7; }
+  .nav-item.active .nav-icon { opacity: 1; }
 
   /* Main content */
   .main {
     flex: 1;
-    padding: 28px 32px;
-    overflow-y: auto;
+    overflow: hidden;
+    position: relative;
+    min-height: 0;
   }
 
   /* ── VISTAS ───────────────────────────────────────────── */
-  .view { display: none; animation: fadeIn .2s ease; }
-  .view.active { display: block; }
+  .view {
+    display: none;
+    animation: fadeIn .2s ease;
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    flex-direction: column;
+  }
+  .view.active { display: flex; }
   @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
 
-  /* Page header */
+  /* Page header — fijo arriba de cada vista */
   .page-header {
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     justify-content: space-between;
-    margin-bottom: 28px;
+    min-height: 52px;
+    padding: 0 32px;
+    background: var(--bg);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+    z-index: 10;
+  }
+
+  /* Contenedor scrolleable dentro de cada vista */
+  .view-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 24px 32px;
+    min-height: 0;
   }
   .page-title {
-    font-size: 22px;
+    font-size: 18px;
     font-weight: 600;
     letter-spacing: -.3px;
   }
   .page-subtitle {
-    font-size: 12px;
+    font-size: 11px;
     color: var(--muted);
     font-family: var(--font-mono);
-    margin-top: 4px;
+    margin-top: 2px;
   }
 
   /* Stats row */
@@ -487,7 +491,7 @@
     padding: 3px 9px;
     font-size: 10px;
     font-family: var(--font-mono);
-    font-weight: 600;
+    font-weight: 400;
     letter-spacing: .5px;
     text-transform: uppercase;
     border: 1px solid;
@@ -687,7 +691,7 @@
   }
   .modal-title {
     font-size: 15px;
-    font-weight: 600;
+    font-weight: 400;
     font-family: var(--font-mono);
   }
   .modal-close {
@@ -737,69 +741,137 @@
   /* ── CONFIGURACION ────────────────────────────────────── */
   .config-grid {
     display: grid;
-    grid-template-columns: 260px 1fr;
+    grid-template-columns: 280px 1fr 1fr;
     gap: 20px;
   }
-  .config-servicio-list { display: flex; flex-direction: column; gap: 4px; }
+  .config-servicio-list { display: flex; flex-direction: column; gap: 3px; }
   .config-servicio-item {
-    padding: 10px 14px;
+    padding: 7px 10px;
     background: var(--surface);
     border: 1px solid var(--border);
     cursor: pointer;
-    font-size: 13px;
+    font-size: 12px;
     display: flex;
     align-items: center;
     justify-content: space-between;
+    gap: 6px;
     transition: all .12s;
   }
   .config-servicio-item:hover { border-color: var(--accent); }
   .config-servicio-item.active { border-color: var(--accent); background: rgba(59,130,246,.08); color: var(--accent); }
+  .config-servicio-item.inactivo { opacity: .5; }
+  .config-servicio-item.inactivo:hover { opacity: .8; border-color: var(--muted); }
+  .config-servicio-nombre { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .config-doc-count {
     font-size: 10px;
     font-family: var(--font-mono);
     color: var(--muted);
     background: var(--bg);
     border: 1px solid var(--border);
-    padding: 2px 7px;
+    padding: 1px 6px;
+    flex-shrink: 0;
   }
+  .config-srv-btn {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    width: 22px; height: 22px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    font-size: 12px;
+    flex-shrink: 0;
+    transition: all .15s;
+    line-height: 1;
+  }
+  .config-srv-btn.baja:hover    { border-color: var(--danger); color: var(--danger); }
+  .config-srv-btn.alta:hover    { border-color: var(--success); color: var(--success); }
+  .config-srv-btn.eliminar:hover { border-color: var(--danger); color: var(--danger); background: rgba(239,68,68,.08); }
   .config-panel {
     background: var(--surface);
     border: 1px solid var(--border);
     padding: 0;
   }
   .config-panel-header {
-    padding: 16px 20px;
+    padding: 12px 16px;
     border-bottom: 1px solid var(--border);
     display: flex;
     align-items: center;
     justify-content: space-between;
   }
-  .config-panel-title { font-size: 14px; font-weight: 600; }
+  .config-panel-title { font-size: 13px; font-weight: 600; }
   .config-doc-row {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 12px 20px;
+    padding: 7px 16px;
     border-bottom: 1px solid var(--border);
-    font-size: 13px;
+    font-size: 12px;
+    gap: 6px;
   }
   .config-doc-row:last-child { border-bottom: none; }
-  .btn-icon {
+  .config-doc-row.inactivo { opacity: .5; }
+
+  .filtro-cat-btn {
     background: none;
     border: 1px solid var(--border);
     color: var(--muted);
-    width: 28px; height: 28px;
-    display: flex; align-items: center; justify-content: center;
+    font-size: 10px;
+    font-family: var(--font-mono);
+    padding: 2px 7px;
     cursor: pointer;
-    font-size: 14px;
-    transition: all .15s;
+    letter-spacing: .5px;
+    transition: all .12s;
   }
-  .btn-icon:hover { border-color: var(--danger); color: var(--danger); }
+  .filtro-cat-btn:hover  { border-color: var(--accent); color: var(--text); }
+  .filtro-cat-btn.active { border-color: var(--accent); color: var(--accent); background: rgba(59,130,246,.08); }
+
+  /* ── CONSULTA ─────────────────────────────────────────── */
+  .consulta-grid {
+    display: grid;
+    grid-template-columns: 220px 1fr 1fr;
+    gap: 20px;
+  }
+  .consulta-srv-item {
+    padding: 9px 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    cursor: pointer;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 3px;
+    transition: all .12s;
+  }
+  .consulta-srv-item:hover  { border-color: var(--accent); }
+  .consulta-srv-item.active { border-color: var(--accent); background: rgba(59,130,246,.08); color: var(--accent); }
+  .consulta-doc-row {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    padding: 9px 16px;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+    cursor: pointer;
+    transition: background .1s;
+  }
+  .consulta-doc-row:hover  { background: var(--surface2); }
+  .consulta-doc-row.active { background: rgba(59,130,246,.07); border-left: 2px solid var(--accent); }
+  .consulta-doc-row:last-child { border-bottom: none; }
+  .consulta-doc-row::before {
+    content: '';
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+    flex-shrink: 0;
+    opacity: .6;
+  }
 
   /* ── LOG ──────────────────────────────────────────────── */
   .log-row {
     display: grid;
-    grid-template-columns: 160px 100px 140px 1fr;
+    grid-template-columns: 160px 100px 180px 1fr;
     gap: 0;
     padding: 10px 18px;
     border-bottom: 1px solid var(--border);
@@ -809,6 +881,23 @@
   .log-row:last-child { border-bottom: none; }
   .log-ts { font-family: var(--font-mono); color: var(--muted); font-size: 11px; }
   .log-user { font-family: var(--font-mono); font-size: 11px; }
+
+  /* ── SPINNER ──────────────────────────────────────────── */
+  .spinner {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin .6s linear infinite;
+    vertical-align: middle;
+  }
+  .spinner.dark {
+    border-color: rgba(0,0,0,0.15);
+    border-top-color: var(--text);
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
 
   /* ── EMPTY STATE ──────────────────────────────────────── */
   .empty-state {
@@ -820,6 +909,58 @@
   .empty-text { font-size: 14px; }
   .empty-sub { font-size: 12px; font-family: var(--font-mono); margin-top: 6px; }
 
+
+
+  /* ── SERVICIO DROPDOWN ───────────────────────────────────── */
+  .nsrv-srv-option {
+    padding: 9px 14px;
+    font-size: 13px;
+    cursor: pointer;
+    border-bottom: 1px solid var(--border);
+    transition: background .1s;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .nsrv-srv-option:last-child { border-bottom: none; }
+  .nsrv-srv-option:hover { background: var(--surface2); color: var(--accent); }
+
+  /* ── PROVEEDOR DROPDOWN ──────────────────────────────────── */
+  .nsrv-prov-option {
+    padding: 9px 14px;
+    font-size: 13px;
+    cursor: pointer;
+    border-bottom: 1px solid var(--border);
+    transition: background .1s;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .nsrv-prov-option:last-child { border-bottom: none; }
+  .nsrv-prov-option:hover { background: var(--surface2); color: var(--accent); }
+
+  /* ── OBRA DROPDOWN ────────────────────────────────────────── */
+  .nsrv-obra-option {
+    padding: 9px 14px;
+    font-size: 13px;
+    cursor: pointer;
+    border-bottom: 1px solid var(--border);
+    transition: background .1s;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .nsrv-obra-option:last-child { border-bottom: none; }
+  .nsrv-obra-option:hover { background: var(--surface2); color: var(--accent); }
+  /* ── NUEVO SERVICIO ───────────────────────────────────────── */
+  .nsrv-doc-row:last-child { border-bottom: none !important; }
+  .nsrv-drag-over { background: color-mix(in srgb, var(--accent) 8%, var(--surface)) !important; }
+  .nsrv-drag-over > div > div[id^="nsrv-dropzone"] {
+    border-color: var(--accent) !important;
+    color: var(--accent) !important;
+  }
+  .nsrv-doc-row:hover { background: var(--surface2); }
+  #nsrv-doc-list .nsrv-doc-row { transition: background .1s; }
   /* ── RESPONSIVE adjustments ───────────────────────────── */
   @media (max-width: 900px) {
     .stats-row { grid-template-columns: repeat(2,1fr); }
@@ -849,8 +990,9 @@
 
     <div class="demo-note">// Demo — seleccioná perfil</div>
     <div class="perfil-btns">
-      <button class="perfil-btn active" onclick="setPerfil('editor')">EDITOR</button>
-      <button class="perfil-btn" onclick="setPerfil('consultor')">CONSULTOR</button>
+      <button class="perfil-btn active" onclick="setPerfil('admin')">ADMIN</button>
+      <button class="perfil-btn" onclick="setPerfil('obras')">OBRAS / S&H</button>
+      <button class="perfil-btn" onclick="setPerfil('finanzas')">FINANZAS</button>
       <button class="perfil-btn" onclick="setPerfil('proveedor')">PROVEEDOR</button>
     </div>
 
@@ -889,26 +1031,36 @@
       <div class="sidebar-section">
         <div class="sidebar-section-title">Principal</div>
         <div class="nav-item active" onclick="showView('dashboard')" id="nav-dashboard">
-          <span class="nav-icon">⬡</span> Dashboard
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg> Dashboard
         </div>
         <div class="nav-item" onclick="showView('obras')" id="nav-obras">
-          <span class="nav-icon">◫</span> Obras
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M3 7l9-4 9 4M4 7v14M20 7v14M9 21V11h6v10"/></svg> Obras
+        </div>
+        <div class="nav-item" onclick="showView('vehiculos')" id="nav-vehiculos">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 17H3v-5l2-5h14l2 5v5h-2M5 17a2 2 0 1 0 4 0 2 2 0 0 0-4 0M15 17a2 2 0 1 0 4 0 2 2 0 0 0-4 0"/><path d="M5 12h14"/></svg> Vehículos
+        </div>
+        <div class="nav-item" onclick="showView('personas')" id="nav-personas">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="7" r="4"/><path d="M4 21v-1a8 8 0 0 1 16 0v1"/></svg> Personas
+        </div>
+        <div class="nav-item" onclick="showView('consulta')" id="nav-consulta">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg> Consulta
         </div>
       </div>
-      <div class="sidebar-section" id="nav-section-admin">
-        <div class="sidebar-section-title">Administración</div>
-        <div class="nav-item" onclick="showView('config')" id="nav-config">
-          <span class="nav-icon">◈</span> Configuración
+      <!-- Fondo fijo: Config, Log y Cerrar sesión -->
+      <div style="position:absolute;bottom:0;left:0;right:0;background:var(--surface);border-top:1px solid var(--border);">
+        <div id="nav-admin-section" style="padding:8px 16px 4px;">
+          <div class="nav-item" onclick="showView('config')" id="nav-config" style="margin-bottom:0">
+            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg> Configuración
+          </div>
+          <div class="nav-item" onclick="showView('log')" id="nav-log" style="margin-bottom:0">
+            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg> Log de Actividad
+          </div>
         </div>
-        <div class="nav-item" onclick="showView('log')" id="nav-log">
-          <span class="nav-icon">≡</span> Log de Actividad
+        <div style="padding:8px 16px 12px;border-top:1px solid var(--border);">
+          <button class="btn-logout" onclick="doLogout()">
+            <span style="font-size:14px;">⏻</span> Cerrar sesión
+          </button>
         </div>
-      </div>
-      <!-- Salir al fondo del sidebar -->
-      <div style="margin-top:auto;padding:16px;border-top:1px solid var(--border);position:absolute;bottom:0;left:0;right:0;">
-        <button class="btn-logout" onclick="doLogout()">
-          <span style="font-size:14px;">⏻</span> Cerrar sesión
-        </button>
       </div>
     </div>
 
@@ -923,42 +1075,42 @@
             <div class="page-subtitle" id="dash-subtitle">// Resumen general del sistema</div>
           </div>
         </div>
-        <div class="stats-row" id="stats-row">
-          <div class="stat-card blue">
-            <div class="stat-label">Obras activas</div>
-            <div class="stat-value">4</div>
+        <div class="view-body">
+          <div class="stats-row" id="stats-row">
+            <div class="stat-card blue">
+              <div class="stat-label">Obras activas</div>
+              <div class="stat-value" id="stat-obras">0</div>
+            </div>
+            <div class="stat-card amber">
+              <div class="stat-label">Docs pendientes</div>
+              <div class="stat-value" id="stat-pendientes">0</div>
+            </div>
+            <div class="stat-card green">
+              <div class="stat-label">Docs aprobados</div>
+              <div class="stat-value" id="stat-aprobados">0</div>
+            </div>
+            <div class="stat-card red">
+              <div class="stat-label">Rechazados</div>
+              <div class="stat-value" id="stat-rechazados">0</div>
+            </div>
           </div>
-          <div class="stat-card amber">
-            <div class="stat-label">Docs pendientes</div>
-            <div class="stat-value">12</div>
+          <div class="table-wrap">
+            <div class="table-toolbar">
+              <div class="table-title">ESTADO POR OBRA</div>
+            </div>
+            <table>
+              <thead>
+                <tr>
+                  <th>Obra</th>
+                  <th>Empresa</th>
+                  <th>Servicios</th>
+                  <th>Estado Docs</th>
+                  <th>Estado</th>
+                </tr>
+              </thead>
+              <tbody id="dash-table-body"></tbody>
+            </table>
           </div>
-          <div class="stat-card green">
-            <div class="stat-label">Docs aprobados</div>
-            <div class="stat-value">28</div>
-          </div>
-          <div class="stat-card red">
-            <div class="stat-label">Rechazados</div>
-            <div class="stat-value">3</div>
-          </div>
-        </div>
-
-        <!-- Tabla resumen obras -->
-        <div class="table-wrap">
-          <div class="table-toolbar">
-            <div class="table-title">ESTADO POR OBRA</div>
-          </div>
-          <table>
-            <thead>
-              <tr>
-                <th>Obra</th>
-                <th>Empresa</th>
-                <th>Servicios</th>
-                <th>Estado Docs</th>
-                <th>Estado</th>
-              </tr>
-            </thead>
-            <tbody id="dash-table-body"></tbody>
-          </table>
         </div>
       </div>
 
@@ -971,48 +1123,228 @@
           </div>
           <div class="table-actions" id="obras-actions">
             <input class="search-input" placeholder="Buscar obra..." id="search-obras" oninput="filtrarObras()"/>
-            <button class="btn-sm primary" onclick="openModal('modal-nueva-obra')" id="btn-nueva-obra">+ Nueva Obra</button>
+            <button class="btn-sm primary" onclick="abrirNuevoServicio()" id="btn-nueva-obra">+ Nuevo Servicio</button>
           </div>
         </div>
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Código</th>
-                <th>Nombre</th>
-                <th>Empresa</th>
-                <th>Servicios</th>
-                <th>Completitud Docs</th>
-                <th>Estado</th>
-              </tr>
-            </thead>
-            <tbody id="obras-table-body"></tbody>
-          </table>
+        <div class="view-body">
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Empresa</th>
+                  <th>Obra</th>
+                  <th>Proveedor</th>
+                  <th>Servicio</th>
+                  <th>Estado Docs</th>
+                  <th>Estado</th>
+                </tr>
+              </thead>
+              <tbody id="obras-table-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+
+      <!-- NUEVO SERVICIO -->
+      <div class="view" id="view-nuevo-servicio">
+        <div class="page-header">
+          <div>
+            <button class="back-btn" onclick="showView('obras')" style="margin-bottom:4px;">← Volver a Obras</button>
+            <div class="page-title" id="nsrv-titulo">Nuevo Servicio</div>
+            <div class="page-subtitle" id="nsrv-subtitulo">// Registrá un nuevo servicio para una obra</div>
+          </div>
+          <div id="nsrv-header-actions"></div>
+        </div>
+        <!-- Selectores fijos -->
+        <div style="padding:14px 32px;border-bottom:1px solid var(--border);background:var(--bg);flex-shrink:0;z-index:20;">
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:16px;">
+              <div>
+                <div class="form-label" style="margin-bottom:6px;">Empresa</div>
+                <select class="form-select" id="nsrv-empresa" onchange="onNsrvEmpresaChange()">
+                  <option value="">Seleccioná empresa...</option>
+                  <option value="PAMAR">PAMAR</option>
+                  <option value="SAAVEDRA">SAAVEDRA</option>
+                  <option value="SYMESA">SYMESA</option>
+                </select>
+              </div>
+              <div style="position:relative;">
+                <div class="form-label" style="margin-bottom:6px;">Obra</div>
+                <input type="text" class="form-input" id="nsrv-obra-input"
+                  placeholder="Escribí para buscar..."
+                  autocomplete="off"
+                  oninput="filtrarObrasDropdown()"
+                  onfocus="abrirObrasDropdown()"
+                  onblur="setTimeout(()=>cerrarObrasDropdown(),200)"
+                  style="width:100%;"/>
+                <input type="hidden" id="nsrv-obra"/>
+                <div id="nsrv-obra-dropdown"
+                  style="display:none;position:absolute;top:100%;left:0;right:0;
+                  background:var(--surface);border:1px solid var(--accent);
+                  max-height:220px;overflow-y:auto;z-index:50;margin-top:2px;">
+                </div>
+              </div>
+              <div style="position:relative;">
+                <div class="form-label" style="margin-bottom:6px;">Proveedor</div>
+                <input type="text" class="form-input" id="nsrv-proveedor-input"
+                  placeholder="Escribí para buscar..."
+                  autocomplete="off"
+                  oninput="filtrarProveedoresDropdown()"
+                  onfocus="abrirProveedoresDropdown()"
+                  onblur="setTimeout(()=>cerrarProveedoresDropdown(),200)"
+                  style="width:100%;"/>
+                <input type="hidden" id="nsrv-proveedor"/>
+                <div id="nsrv-proveedor-dropdown"
+                  style="display:none;position:absolute;top:100%;left:0;right:0;
+                  background:var(--surface);border:1px solid var(--accent);
+                  max-height:220px;overflow-y:auto;z-index:50;margin-top:2px;">
+                </div>
+              </div>
+              <div style="position:relative;">
+                <div class="form-label" style="margin-bottom:6px;">Tipo de Servicio</div>
+                <input type="text" class="form-input" id="nsrv-servicio-input"
+                  placeholder="Escribí para buscar..."
+                  autocomplete="off"
+                  oninput="filtrarServiciosDropdown()"
+                  onfocus="abrirServiciosDropdown()"
+                  onblur="setTimeout(()=>cerrarServiciosDropdown(),200)"
+                  style="width:100%;"/>
+                <input type="hidden" id="nsrv-servicio"/>
+                <div id="nsrv-servicio-dropdown"
+                  style="display:none;position:absolute;top:100%;left:0;right:0;
+                  background:var(--surface);border:1px solid var(--accent);
+                  max-height:220px;overflow-y:auto;z-index:50;margin-top:2px;">
+                </div>
+              </div>
+          </div>
+        </div>
+
+        <div class="view-body" style="overflow-y:visible;padding-bottom:0;">
+          <div id="nsrv-seleccion">
+
+            <div id="nsrv-docs-wrap" style="display:none;">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+                <div>
+                  <span style="font-size:13px;font-weight:600;">Documentación Requerida</span>
+                  <span id="nsrv-docs-count" style="font-family:var(--font-mono);font-size:11px;color:var(--muted);margin-left:10px;"></span>
+                </div>
+                <button class="btn-sm primary" id="btn-guardar-nsrv" onclick="guardarNuevoServicio()">Guardar Servicio</button>
+              </div>
+              <div class="table-wrap" style="overflow-y:auto;max-height:calc(100vh - 280px);">
+                <div style="display:grid;grid-template-columns:minmax(200px,1fr) 112px 148px 44px minmax(160px,1fr);gap:0;padding:6px 16px;background:var(--surface2);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:10;">
+                  <div style="font-size:10px;font-family:var(--font-mono);color:var(--muted);text-transform:uppercase;letter-spacing:.8px;">Documento</div>
+                  <div style="font-size:10px;font-family:var(--font-mono);color:var(--muted);text-transform:uppercase;letter-spacing:.8px;">Vencimiento</div>
+                  <div style="font-size:10px;font-family:var(--font-mono);color:var(--muted);text-transform:uppercase;letter-spacing:.8px;">Periodicidad</div>
+                  <div style="font-size:10px;font-family:var(--font-mono);color:var(--muted);text-transform:uppercase;letter-spacing:.8px;"></div>
+                  <div style="font-size:10px;font-family:var(--font-mono);color:var(--muted);text-transform:uppercase;letter-spacing:.8px;">Archivo</div>
+                  <div></div>
+                </div>
+                <div id="nsrv-doc-list"></div>
+              </div>
+            </div>
+
+            <div id="nsrv-empty" style="text-align:center;padding:60px 20px;color:var(--muted);">
+              <div style="font-size:32px;margin-bottom:12px;">◈</div>
+              <div style="font-size:14px;">Seleccioná proveedor, servicio y obra</div>
+              <div style="font-size:12px;font-family:var(--font-mono);margin-top:6px;">para ver los documentos requeridos</div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      <!-- VEHÍCULOS -->
+      <div class="view" id="view-vehiculos">
+        <div class="page-header">
+          <div>
+            <div class="page-title">Vehículos</div>
+            <div class="page-subtitle">// Gestión de vehículos</div>
+          </div>
+        </div>
+        <div class="view-body">
+          <div class="empty-state" style="margin-top:60px;">
+            <div class="empty-icon">◉</div>
+            <div class="empty-text">Sección en construcción</div>
+            <div class="empty-sub">Próximamente disponible</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PERSONAS -->
+      <div class="view" id="view-personas">
+        <div class="page-header">
+          <div>
+            <div class="page-title">Personas</div>
+            <div class="page-subtitle">// Gestión de personas</div>
+          </div>
+        </div>
+        <div class="view-body">
+          <div class="empty-state" style="margin-top:60px;">
+            <div class="empty-icon">◎</div>
+            <div class="empty-text">Sección en construcción</div>
+            <div class="empty-sub">Próximamente disponible</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- CONSULTA -->
+      <div class="view" id="view-consulta">
+        <div class="page-header">
+          <div>
+            <div class="page-title">Consulta</div>
+            <div class="page-subtitle">// Documentación requerida por servicio</div>
+          </div>
+        </div>
+        <div class="view-body">
+          <div class="consulta-grid">
+            <div>
+              <div style="font-size:11px;font-family:var(--font-mono);color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;">Servicios</div>
+              <div id="consulta-srv-list"></div>
+            </div>
+            <div>
+              <div style="font-size:11px;font-family:var(--font-mono);color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;">Documentos Requeridos</div>
+              <div class="config-panel" id="consulta-doc-panel">
+                <div class="empty-state">
+                  <div class="empty-icon" style="font-size:22px;">🔍</div>
+                  <div class="empty-text">Seleccioná un servicio</div>
+                  <div class="empty-sub">para ver los documentos requeridos</div>
+                </div>
+              </div>
+            </div>
+            <div>
+              <div style="font-size:11px;font-family:var(--font-mono);color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;">Detalle</div>
+              <div class="config-panel" id="consulta-detalle-panel">
+                <div class="empty-state">
+                  <div class="empty-text" style="font-size:12px;">Seleccioná un documento</div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
       <!-- DETALLE OBRA -->
       <div class="view" id="view-obra-detalle">
-        <button class="back-btn" onclick="showView('obras')">← Volver a Obras</button>
-        <div class="obra-header">
-          <div class="obra-header-top">
-            <div>
-              <div class="obra-nombre" id="detalle-nombre">—</div>
-              <div class="obra-meta" id="detalle-meta"></div>
-            </div>
-            <div id="detalle-badge"></div>
-          </div>
-        </div>
-
         <div class="page-header">
           <div>
-            <div class="page-title" style="font-size:16px;">Servicios y Documentación</div>
+            <button class="back-btn" onclick="showView('obras')" style="margin-bottom:4px;">← Volver a Obras</button>
+            <div class="obra-nombre" id="detalle-nombre">—</div>
+            <div class="obra-meta" id="detalle-meta"></div>
           </div>
-          <div id="detalle-actions">
-            <button class="btn-sm primary" onclick="openModal('modal-nuevo-servicio')">+ Nuevo Servicio</button>
+          <div style="display:flex;align-items:center;gap:12px;">
+            <div id="detalle-badge"></div>
+            <div id="detalle-actions">
+              <button class="btn-sm primary" onclick="openModal('modal-nuevo-servicio')">+ Nuevo Servicio</button>
+            </div>
           </div>
         </div>
-        <div class="servicios-grid" id="servicios-grid"></div>
+        <div class="view-body">
+          <div class="page-header" style="border:none;padding:0;margin-bottom:16px;min-height:auto;">
+            <div class="page-title" style="font-size:16px;">Servicios y Documentación</div>
+            <span id="detalle-srv-count" style="font-family:var(--font-mono);font-size:12px;color:var(--muted)"></span>
+          </div>
+          <div class="servicios-grid" id="servicios-grid"></div>
+        </div>
       </div>
 
       <!-- CONFIGURACION -->
@@ -1022,26 +1354,19 @@
             <div class="page-title">Configuración</div>
             <div class="page-subtitle">// Parámetros del sistema</div>
           </div>
-        </div>
-
-        <!-- Tabs -->
-        <div class="config-tabs">
-          <div class="config-tab active" onclick="switchConfigTab('matriz')" id="tab-matriz">Matriz</div>
-          <div class="config-tab" onclick="switchConfigTab('general')" id="tab-general">General</div>
-        </div>
-
-        <!-- Tab Matriz -->
-        <div class="config-tab-content active" id="tabcontent-matriz">
-          <div style="display:flex;justify-content:flex-end;gap:8px;margin-bottom:16px;">
-            <button class="btn-sm" onclick="openModal('modal-nuevo-doc-cfg')">+ Documento</button>
+          <div style="display:flex;gap:8px;">
             <button class="btn-sm primary" onclick="openModal('modal-nuevo-servicio-cfg')">+ Servicio</button>
+            <button class="btn-sm" onclick="openModal('modal-nuevo-doc-cfg')">+ Documento</button>
           </div>
+        </div>
+        <div class="view-body">
           <div class="config-grid">
             <div>
               <div style="font-size:11px;font-family:var(--font-mono);color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;">Tipos de Servicio</div>
               <div class="config-servicio-list" id="config-servicio-list"></div>
             </div>
             <div>
+              <div style="font-size:11px;font-family:var(--font-mono);color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;">Documentos Requeridos</div>
               <div class="config-panel" id="config-panel">
                 <div class="empty-state">
                   <div class="empty-icon">◈</div>
@@ -1050,30 +1375,28 @@
                 </div>
               </div>
             </div>
-          </div>
-        </div>
-
-        <!-- Tab General -->
-        <div class="config-tab-content" id="tabcontent-general">
-          <div class="general-card">
-            <div class="form-group">
-              <label class="form-label">Nombre de la aplicación</label>
-              <input class="form-input" id="cfg-app-nombre" value="Gestión Documental" placeholder="Nombre visible en la app"/>
-            </div>
-            <div class="form-group">
-              <label class="form-label">Logo (ruta relativa)</label>
-              <input class="form-input" id="cfg-app-logo" value="./icons/Icono_tituloblanco.png" placeholder="./icons/logo.png"/>
-              <div style="margin-top:8px;font-size:11px;font-family:var(--font-mono);color:var(--muted)">Preview:</div>
-              <div style="margin-top:8px;padding:12px;background:var(--bg);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;min-height:60px;">
-                <img id="cfg-logo-preview" src="./icons/Icono_tituloblanco.png" style="max-height:40px;object-fit:contain;" onerror="this.style.opacity='.3'"/>
+            <div>
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+                <div style="font-size:11px;font-family:var(--font-mono);color:var(--muted);text-transform:uppercase;letter-spacing:1px;">Catálogo de Documentos</div>
+                <div style="display:flex;align-items:center;gap:6px;">
+                  <div style="display:flex;align-items:center;gap:0;">
+                    <button onclick="limpiarBuscadorDoc()" title="Limpiar búsqueda"
+                      style="background:none;border:none;color:var(--muted);padding:2px 7px;cursor:pointer;display:flex;align-items:center;">
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+                    </button>
+                    <input id="filtro-doc-buscar" type="text" placeholder="buscar..." oninput="renderConfigDocumentos()"
+                      style="font-size:11px;font-family:var(--font-mono);background:var(--bg);border:1px solid var(--border);color:var(--text);padding:2px 8px;width:160px;outline:none;"/>
+                  </div>
+                  <button class="filtro-cat-btn active" onclick="setFiltroDocCat('todos',this)">Todos</button>
+                  <button class="filtro-cat-btn" onclick="setFiltroDocCat('Otros',this)">O</button>
+                  <button class="filtro-cat-btn" onclick="setFiltroDocCat('Finanzas',this)">EF</button>
+                  <button class="filtro-cat-btn" onclick="setFiltroDocCat('Finanzas y Otros',this)">FO</button>
+                </div>
               </div>
-            </div>
-            <div style="margin-top:4px;">
-              <button class="btn-sm primary" onclick="guardarConfigGeneral()">Guardar cambios</button>
+              <div class="config-panel" id="config-doc-cat-panel"></div>
             </div>
           </div>
         </div>
-
       </div>
 
       <!-- LOG -->
@@ -1084,16 +1407,18 @@
             <div class="page-subtitle">// Registro de acciones en el sistema</div>
           </div>
         </div>
-        <div class="table-wrap">
-          <div class="table-toolbar">
-            <div class="table-title">EVENTOS RECIENTES</div>
-          </div>
-          <div style="padding:12px 18px;border-bottom:1px solid var(--border);background:var(--surface2);">
-            <div class="log-row" style="padding:0;font-size:10px;font-family:var(--font-mono);color:var(--muted);text-transform:uppercase;letter-spacing:.8px;border:none;">
-              <div>Timestamp</div><div>Usuario</div><div>Acción</div><div>Detalle</div>
+        <div class="view-body">
+          <div class="table-wrap">
+            <div class="table-toolbar">
+              <div class="table-title">EVENTOS RECIENTES</div>
             </div>
+            <div style="padding:12px 18px;border-bottom:1px solid var(--border);background:var(--surface2);">
+              <div class="log-row" style="padding:0;font-size:10px;font-family:var(--font-mono);color:var(--muted);text-transform:uppercase;letter-spacing:.8px;border:none;">
+                <div>Timestamp</div><div>Usuario</div><div>Acción</div><div>Detalle</div>
+              </div>
+            </div>
+            <div id="log-body"></div>
           </div>
-          <div id="log-body"></div>
         </div>
       </div>
 
@@ -1104,6 +1429,25 @@
 <!-- ════════════════════════════════════════════════════════
      MODALES
 ════════════════════════════════════════════════════════ -->
+
+<!-- Modal Confirmación -->
+<div class="modal-overlay" id="modal-confirm">
+  <div class="modal" style="max-width:400px;">
+    <div class="modal-header">
+      <div class="modal-title" id="confirm-title">CONFIRMAR</div>
+    </div>
+    <div class="modal-body">
+      <p id="confirm-msg" style="font-size:13px;color:var(--text);margin-bottom:6px;"></p>
+      <p id="confirm-sub" style="font-size:12px;color:var(--muted);"></p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-sm" onclick="closeModal('modal-confirm')">Cancelar</button>
+      <button class="btn-sm" id="confirm-ok-btn"
+        style="background:var(--danger);color:#fff;border-color:var(--danger);"
+        onclick="ejecutarConfirm(this)">Eliminar</button>
+    </div>
+  </div>
+</div>
 
 <!-- Modal Nueva Obra -->
 <div class="modal-overlay" id="modal-nueva-obra">
@@ -1204,10 +1548,58 @@
         <label class="form-label">Descripción</label>
         <input class="form-input" id="cfg-doc-desc" placeholder="Descripción opcional"/>
       </div>
+      <div class="form-group">
+        <label class="form-label">Sector Responsable</label>
+        <select class="form-select" id="cfg-doc-finanzas">
+          <option value="Otros">Otros Sectores</option>
+          <option value="Finanzas">Exclusivo Finanzas</option>
+          <option value="Finanzas y Otros">Finanzas y Otros</option>
+        </select>
+      </div>
     </div>
     <div class="modal-footer">
       <button class="btn-sm" onclick="closeModal('modal-nuevo-doc-cfg')">Cancelar</button>
       <button class="btn-sm primary" onclick="agregarDocCfg()">Agregar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Editar Documento (config) -->
+<div class="modal-overlay" id="modal-editar-doc-cfg">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">EDITAR DOCUMENTO</div>
+      <button class="modal-close" onclick="closeModal('modal-editar-doc-cfg')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="edit-doc-id"/>
+      <div class="form-group">
+        <label class="form-label">Nombre del documento *</label>
+        <input class="form-input" id="edit-doc-nombre" placeholder="ej: Seguro de vida"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Descripción</label>
+        <input class="form-input" id="edit-doc-desc" placeholder="Descripción opcional"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Sector Responsable</label>
+        <select class="form-select" id="edit-doc-cat">
+          <option value="Otros">Otros Sectores</option>
+          <option value="Finanzas">Exclusivo Finanzas</option>
+          <option value="Finanzas y Otros">Finanzas y Otros</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Estado</label>
+        <select class="form-select" id="edit-doc-estado">
+          <option value="Activo">Activo</option>
+          <option value="Inactivo">Inactivo</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-sm" onclick="closeModal('modal-editar-doc-cfg')">Cancelar</button>
+      <button class="btn-sm primary" onclick="guardarEditDocCfg()">Guardar</button>
     </div>
   </div>
 </div>
@@ -1253,7 +1645,7 @@ const GAS_URL = 'https://script.google.com/macros/s/AKfycbxUC2fvWNle-8IGfrD2y02Q
 
 // Usuario activo (login simulado — se reemplazará por SIA)
 let currentUser = null;
-let selectedPerfil = 'editor';
+let selectedPerfil = 'admin';
 
 // Estado en memoria
 let OBRAS          = [];
@@ -1263,14 +1655,21 @@ let MATRIZ         = { headers: [], rows: [] };
 let DOCUMENTACION  = [];   // registros operativos
 
 let currentObraId        = null;
+let OBRAS_BEJERMAN       = [];
+let PROVEEDORES          = [];
+let nuevoSrvState        = { obraId: null, srvId: null, proveedor: null, docs: [] };
+let nsrvCreandoRegistros = false; // flag para evitar crearRegistrosDoc simultáneo
 let configServicioActivo = null;
+let filtroDocCat = 'todos';
 let selectedFileForUpload = null;
 let docToUpload           = null;
+let confirmCallback       = null;
 
 const PERFILES_DEMO = {
-  editor:    { nombre: 'Admin Editor',   initials: 'AE', perfil: 'editor' },
-  consultor: { nombre: 'Consultor HSE',  initials: 'CH', perfil: 'consultor' },
-  proveedor: { nombre: 'Proveedor Demo', initials: 'PR', perfil: 'proveedor' },
+  admin:     { nombre: 'Admin',       initials: 'AD', perfil: 'admin' },
+  obras:     { nombre: 'Obras / S&H', initials: 'OB', perfil: 'obras' },
+  finanzas:  { nombre: 'Finanzas',    initials: 'FN', perfil: 'finanzas' },
+  proveedor: { nombre: 'Proveedor',   initials: 'PR', perfil: 'proveedor' },
 };
 
 
@@ -1278,11 +1677,17 @@ const PERFILES_DEMO = {
 // 2 - COMUNICACION CON GAS
 // ═══════════════════════════════════════════════════════════
 async function gasPost(payload) {
-  const resp = await fetch(GAS_URL, {
-    method: 'POST',
-    body: JSON.stringify({ ...payload, usuario: currentUser?.nombre || 'sistema' }),
-  });
-  const json = await resp.json();
+  const body = JSON.stringify({ ...payload, usuario: currentUser?.nombre || 'sistema' });
+  // Advertir si el payload es muy grande (> 20MB en base64)
+  if (body.length > 20 * 1024 * 1024) throw new Error('El archivo es demasiado grande para enviar.');
+  const resp = await fetch(GAS_URL, { method: 'POST', body });
+  const text = await resp.text();
+  let json;
+  try {
+    json = JSON.parse(text);
+  } catch(e) {
+    throw new Error('Respuesta inválida del servidor: ' + text.slice(0, 200));
+  }
   if (!json.ok) throw new Error(json.error || 'Error en el servidor');
   return json.data;
 }
@@ -1299,13 +1704,13 @@ function showToast(msg, tipo = 'ok') {
   t.textContent = msg;
   t.style.opacity = '1';
   if (tipo === 'ok') {
-    t.style.background = 'rgba(34,197,94,.15)';
-    t.style.borderColor = 'rgba(34,197,94,.5)';
-    t.style.color = 'var(--success)';
+    t.style.background = 'rgba(34,197,94,.9)';
+    t.style.borderColor = 'rgba(34,197,94,1)';
+    t.style.color = '#fff';
   } else {
-    t.style.background = 'rgba(239,68,68,.15)';
-    t.style.borderColor = 'rgba(239,68,68,.5)';
-    t.style.color = 'var(--danger)';
+    t.style.background = 'rgba(210,40,40,.92)';
+    t.style.borderColor = 'rgba(210,40,40,1)';
+    t.style.color = '#fff';
   }
   clearTimeout(t._timer);
   t._timer = setTimeout(() => { t.style.opacity = '0'; }, 3000);
@@ -1314,11 +1719,12 @@ function showToast(msg, tipo = 'ok') {
 function setLoading(btn, loading) {
   if (!btn) return;
   if (loading) {
-    btn._orig = btn.textContent;
-    btn.textContent = '...';
+    btn._orig = btn.innerHTML;
+    const dark = btn.classList.contains('config-srv-btn');
+    btn.innerHTML = `<span class="spinner${dark ? ' dark' : ''}"></span>`;
     btn.disabled = true;
   } else {
-    btn.textContent = btn._orig || btn.textContent;
+    btn.innerHTML = btn._orig || btn.innerHTML;
     btn.disabled = false;
   }
 }
@@ -1339,7 +1745,7 @@ async function doLogin() {
   try {
     currentUser = { ...PERFILES_DEMO[selectedPerfil] };
     document.getElementById('login-screen').style.display = 'none';
-    document.getElementById('app').style.display = 'block';
+    document.getElementById('app').classList.add('visible');
     await initApp();
   } catch(e) {
     showToast('Error al iniciar sesión: ' + e.message, 'error');
@@ -1352,7 +1758,7 @@ function doLogout() {
   currentUser = null;
   OBRAS = []; SERVICIOS = {}; CONFIG = {};
   document.getElementById('login-screen').style.display = 'flex';
-  document.getElementById('app').style.display = 'none';
+  document.getElementById('app').classList.remove('visible');
 }
 
 
@@ -1364,12 +1770,17 @@ async function initApp() {
   document.getElementById('top-name').textContent   = currentUser.nombre;
   document.getElementById('top-role').textContent   = currentUser.perfil.toUpperCase();
 
-  const isEditor    = currentUser.perfil === 'editor';
+  const isAdmin     = currentUser.perfil === 'admin';
   const isProveedor = currentUser.perfil === 'proveedor';
 
-  document.getElementById('nav-section-admin').style.display = isEditor ? '' : 'none';
-  document.getElementById('btn-nueva-obra').style.display    = isEditor ? '' : 'none';
-  document.getElementById('detalle-actions').style.display   = isEditor ? '' : 'none';
+  // Mostrar/ocultar sección Config y Log según perfil
+  document.getElementById('nav-admin-section').style.display = isAdmin ? '' : 'none';
+  // Ocultar Consulta para proveedor
+  document.getElementById('nav-consulta').style.display = isProveedor ? 'none' : '';
+
+  // Botones de edición
+  document.getElementById('btn-nueva-obra').style.display  = isProveedor ? 'none' : '';
+  document.getElementById('detalle-actions').style.display = isAdmin ? '' : 'none';
 
   if (isProveedor) {
     document.getElementById('dash-subtitle').textContent = '// Tu documentación pendiente';
@@ -1381,13 +1792,14 @@ async function initApp() {
 
 async function cargarTodo() {
   try {
-    // Cargar en paralelo: obras, catálogos, matriz, documentacion
-    const [obras, serviciosCat, documentosCat, matriz, documentacion] = await Promise.all([
-      gasPost({ accion: 'getObras' }),
+    const [obras, serviciosCat, documentosCat, matriz, documentacion, obrasBej, proveedores] = await Promise.all([
+      Promise.resolve([]), // Obras reemplazado por ObrasBejerman
       gasPost({ accion: 'getServicios' }),
       gasPost({ accion: 'getDocumentos' }),
       gasPost({ accion: 'getMatriz' }),
       gasPost({ accion: 'getDocumentacion' }),
+      gasPost({ accion: 'getObrasBejerman' }).catch(() => []),
+      gasPost({ accion: 'getProveedores' }).catch(() => []),
     ]);
 
     OBRAS          = obras          || [];
@@ -1395,10 +1807,14 @@ async function cargarTodo() {
     DOCUMENTOS_CAT = documentosCat  || [];
     MATRIZ         = matriz         || { headers: [], rows: [] };
     DOCUMENTACION  = documentacion  || [];
+    OBRAS_BEJERMAN = obrasBej       || [];
+    PROVEEDORES    = proveedores    || [];
+
 
     renderDashboard();
     renderObras();
     renderConfig();
+    renderConsulta();
     await cargarLog();
   } catch(e) {
     showToast('Error cargando datos: ' + e.message, 'error');
@@ -1451,15 +1867,27 @@ function normalizarObra(o) {
 // 5 - NAVEGACION
 // ═══════════════════════════════════════════════════════════
 function showView(id) {
+  // Bloquear vistas restringidas
+  if ((id === 'config' || id === 'log') && currentUser?.perfil !== 'admin') {
+    showToast('No tenés permiso para acceder a esta sección.', 'error');
+    return;
+  }
+  if (id === 'consulta' && currentUser?.perfil === 'proveedor') {
+    showToast('No tenés permiso para acceder a esta sección.', 'error');
+    return;
+  }
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   const el  = document.getElementById('view-' + id);
   if (el) el.classList.add('active');
   const nav = document.getElementById('nav-' + id);
   if (nav) nav.classList.add('active');
-  if (id === 'obra-detalle') {
+  if (id === 'obra-detalle' || id === 'nuevo-servicio') {
     document.getElementById('nav-obras').classList.add('active');
   }
+  if (id === 'config')   renderConfig();
+  if (id === 'log')      cargarLog();
+  if (id === 'consulta') renderConsulta();
 }
 
 
@@ -1468,16 +1896,16 @@ function showView(id) {
 // ═══════════════════════════════════════════════════════════
 function getDocsStats(obraId) {
   const docs = getDocsPorObra(obraId);
-  let total = 0, aprobados = 0, cargados = 0, rechazados = 0, pendientes = 0;
+  let total = 0, aprobados = 0, rechazados = 0, pendientes = 0, faltantes = 0;
   docs.forEach(d => {
     total++;
     const est = (d.Doc_Estado || '').toLowerCase();
     if (est === 'aprobado') aprobados++;
-    else if (est === 'cargado') cargados++;
     else if (est === 'rechazado') rechazados++;
+    else if (est === 'faltante') faltantes++;
     else pendientes++;
   });
-  return { total, aprobados, cargados, rechazados, pendientes };
+  return { total, aprobados, rechazados, pendientes, faltantes };
 }
 
 function estadoBadge(estado) {
@@ -1491,8 +1919,8 @@ function estadoBadge(estado) {
 
 function docEstadoBadge(est) {
   const map = {
-    pendiente:  ['dot-pending',  'Pendiente'],
-    cargado:    ['dot-uploaded', 'Cargado'],
+    faltante:   ['dot-pending',  'Faltante'],
+    pendiente:  ['dot-uploaded', 'Pendiente'],
     aprobado:   ['dot-approved', 'Aprobado'],
     rechazado:  ['dot-rejected', 'Rechazado'],
   };
@@ -1513,10 +1941,10 @@ function renderDashboard() {
     totalAprov += s.aprobados;
     totalRech  += s.rechazados;
   });
-  document.querySelectorAll('.stat-value')[0].textContent = obras.filter(o => o.Estado === 'Activa').length;
-  document.querySelectorAll('.stat-value')[1].textContent = totalPend;
-  document.querySelectorAll('.stat-value')[2].textContent = totalAprov;
-  document.querySelectorAll('.stat-value')[3].textContent = totalRech;
+  document.getElementById('stat-obras').textContent      = obras.filter(o => o.Estado === 'Activa').length;
+  document.getElementById('stat-pendientes').textContent  = totalPend;
+  document.getElementById('stat-aprobados').textContent   = totalAprov;
+  document.getElementById('stat-rechazados').textContent  = totalRech;
 
   const tbody = document.getElementById('dash-table-body');
   if (!obras.length) {
@@ -1548,7 +1976,19 @@ function renderDashboard() {
 // 8 - OBRAS
 // ═══════════════════════════════════════════════════════════
 function obrasVisibles() {
-  return OBRAS;
+  const fuente = OBRAS_BEJERMAN.length ? OBRAS_BEJERMAN : OBRAS;
+
+  // Solo obras que tienen al menos un registro en Documentacion
+  const obrasConDocs = new Set(DOCUMENTACION.map(d => d.Obra_ID).filter(Boolean));
+
+  return fuente
+    .map(o => ({
+      Obra_ID: o.Obra_ID || o.Nombre || o.nombre || '',
+      Nombre:  o.Nombre  || o.nombre || '',
+      UN:      o.UN      || o.empresa || '',
+      Estado:  o.Estado  || 'Activa',
+    }))
+    .filter(o => obrasConDocs.has(o.Obra_ID));
 }
 
 function renderObras(filter = '') {
@@ -1562,27 +2002,45 @@ function renderObras(filter = '') {
   });
   const tbody = document.getElementById('obras-table-body');
   if (!obras.length) {
-    tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state"><div class="empty-icon">◫</div><div class="empty-text">Sin obras</div></div></td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state"><div class="empty-icon">◫</div><div class="empty-text">Sin registros</div></div></td></tr>`;
     return;
   }
-  tbody.innerHTML = obras.map(o => {
-    const id  = o.Obra_ID;
-    const nom = o.Nombre;
-    const emp = o.UN;
-    const est = o.Estado;
-    const s   = getDocsStats(id);
-    const pct = s.total > 0 ? Math.round((s.aprobados / s.total) * 100) : 0;
+  // Expandir a una fila por servicio+proveedor
+  const filas = [];
+  obras.forEach(o => {
+    const servicios = getServiciosPorObra(o.Obra_ID);
+    if (!servicios.length) {
+      filas.push({ obra: o, srv: null });
+    } else {
+      servicios.forEach(srv => filas.push({ obra: o, srv }));
+    }
+  });
+
+  tbody.innerHTML = filas.map(({ obra, srv }) => {
+    const id  = obra.Obra_ID;
+    const nom = obra.Nombre;
+    const emp = obra.UN;
+    const est = obra.Estado;
+    const srvNombre  = srv ? getNombreServicio(srv.Servicio_ID) : '—';
+    const proveedor  = srv ? srv.Proveedor : '—';
+    const srvId      = srv ? srv.Servicio_ID : null;
+
+    // Stats solo para este proveedor+servicio
+    const docsGrupo = srv ? srv.docs : [];
+    const aprobados = docsGrupo.filter(d => d.Doc_Estado === 'Aprobado').length;
+    const total     = docsGrupo.length;
+    const pct = total > 0 ? Math.round((aprobados / total) * 100) : 0;
     const fillCls = pct === 100 ? 'ok' : pct > 60 ? '' : 'warn';
-    const srvCount = getServiciosPorObra(id).length;
+
     return `<tr onclick="openObra('${id}')">
-      <td><span style="font-family:var(--font-mono);color:var(--muted)">${id}</span></td>
-      <td><strong>${nom}</strong></td>
       <td><span class="empresa-tag">${emp}</span></td>
-      <td><span style="font-family:var(--font-mono)">${srvCount} servicio${srvCount!==1?'s':''}</span></td>
+      <td><strong>${nom}</strong></td>
+      <td><span style="font-size:13px;">${proveedor}</span></td>
+      <td><span style="font-size:13px;">${srvNombre}</span></td>
       <td>
         <div class="doc-progress">
           <div class="progress-bar"><div class="progress-fill ${fillCls}" style="width:${pct}%"></div></div>
-          <span class="progress-text">${s.aprobados}/${s.total} aprobados</span>
+          <span class="progress-text">${aprobados}/${total} aprobados</span>
         </div>
       </td>
       <td>${estadoBadge(est)}</td>
@@ -1602,7 +2060,6 @@ async function crearObra() {
   setLoading(btn, true);
   try {
     await gasPost({ accion: 'crearObra', data: { Nombre: nombre, UN: empresa } });
-    OBRAS = await gasPost({ accion: 'getObras' });
     renderDashboard();
     renderObras();
     closeModal('modal-nueva-obra');
@@ -1622,7 +2079,7 @@ async function crearObra() {
 // ═══════════════════════════════════════════════════════════
 async function openObra(id) {
   currentObraId = id;
-  const obra = OBRAS.find(o => o.Obra_ID === id);
+  const obra = obrasVisibles().find(o => o.Obra_ID === id);
   if (!obra) return;
 
   document.getElementById('detalle-nombre').textContent = obra.Nombre;
@@ -1676,14 +2133,14 @@ function renderServicios(servicios) {
     const docItems  = srv.docs.map(doc => {
       const est = (doc.Doc_Estado || 'pendiente').toLowerCase();
       let actions = '';
-      if (isEditor && est === 'cargado') {
+      if (isEditor && est === 'pendiente') {
         actions = `<div style="display:flex;gap:4px">
           <button class="btn-icon" style="color:var(--success);border-color:rgba(34,197,94,.4)" title="Aprobar"
             onclick="cambiarEstadoDoc('${doc.Obra_ID}','${doc.Servicio_ID}','${doc.Doc_ID}','${srv.Proveedor}','Aprobado',event)">✓</button>
           <button class="btn-icon" style="color:var(--danger);border-color:rgba(239,68,68,.4)" title="Rechazar"
             onclick="cambiarEstadoDoc('${doc.Obra_ID}','${doc.Servicio_ID}','${doc.Doc_ID}','${srv.Proveedor}','Rechazado',event)">✕</button>
         </div>`;
-      } else if ((isProveedor || isEditor) && (est === 'pendiente' || est === 'rechazado')) {
+      } else if ((isProveedor || isEditor) && (est === 'faltante' || est === 'rechazado')) {
         actions = `<button class="btn-sm" style="font-size:10px;padding:4px 10px"
           onclick="abrirSubirDoc('${doc.Obra_ID}','${doc.Servicio_ID}','${doc.Doc_ID}','${srv.Proveedor}','${doc.Doc_Nombre}',event)">Subir</button>`;
       } else if (doc.Doc_LinkArchivo) {
@@ -1711,8 +2168,9 @@ function renderServicios(servicios) {
         </div>
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
           ${stats.rechazado ? `<span class="badge badge-red">⚠ ${stats.rechazado} rechazado${stats.rechazado>1?'s':''}</span>` : ''}
-          ${stats.cargado   ? `<span class="badge badge-amber">${stats.cargado} para revisar</span>` : ''}
-          ${!stats.rechazado && !stats.cargado && !stats.pendiente ? `<span class="badge badge-green">Completo</span>` : ''}
+          ${stats.pendiente ? `<span class="badge badge-amber">${stats.pendiente} para revisar</span>` : ''}
+          ${stats.faltante  ? `<span class="badge badge-gray">${stats.faltante} faltante${stats.faltante>1?'s':''}</span>` : ''}
+          ${!stats.rechazado && !stats.pendiente && !stats.faltante ? `<span class="badge badge-green">Completo</span>` : ''}
         </div>
       </div>
       <div class="servicio-card-body">
@@ -1728,6 +2186,8 @@ function renderServicios(servicios) {
 // ═══════════════════════════════════════════════════════════
 async function cambiarEstadoDoc(obraId, servicioId, docId, proveedor, nuevoEstado, e) {
   e.stopPropagation();
+  const btn = e.target;
+  setLoading(btn, true);
   try {
     await gasPost({
       accion: 'cambiarEstadoDoc',
@@ -1741,6 +2201,8 @@ async function cambiarEstadoDoc(obraId, servicioId, docId, proveedor, nuevoEstad
               nuevoEstado === 'Aprobado' ? 'ok' : 'error');
   } catch(e) {
     showToast('Error: ' + e.message, 'error');
+  } finally {
+    setLoading(btn, false);
   }
 }
 
@@ -1802,6 +2264,7 @@ async function subirDoc() {
         Servicio_ID:   docToUpload.servicioId,
         Doc_ID:        docToUpload.docId,
         Proveedor:     docToUpload.proveedor,
+        UN:            getUNDeObra(docToUpload.obraId),
         nombreArchivo: selectedFileForUpload.name,
         mimeType:      selectedFileForUpload.type || 'application/octet-stream',
         base64,
@@ -1836,6 +2299,24 @@ function openModal(id) {
     document.getElementById('docs-preview').style.display = 'none';
   }
   document.getElementById(id).classList.add('open');
+}
+
+function abrirConfirm(titulo, mensaje, callback) {
+  document.getElementById('confirm-title').textContent = titulo;
+  document.getElementById('confirm-msg').textContent   = mensaje;
+  confirmCallback = callback;
+  openModal('modal-confirm');
+}
+
+async function ejecutarConfirm(btn) {
+  if (!confirmCallback) return;
+  setLoading(btn, true);
+  try {
+    await confirmCallback();
+  } finally {
+    setLoading(btn, false);
+    closeModal('modal-confirm');
+  }
 }
 
 function previewDocs() {
@@ -1887,21 +2368,224 @@ async function crearServicio() {
 // ═══════════════════════════════════════════════════════════
 function renderConfig() {
   renderConfigServicios();
+  renderConfigDocumentos();
+}
+
+function limpiarBuscadorDoc() {
+  document.getElementById('filtro-doc-buscar').value = '';
+  renderConfigDocumentos();
+}
+
+function setFiltroDocCat(cat, btn) {
+  filtroDocCat = cat;
+  document.querySelectorAll('.filtro-cat-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderConfigDocumentos();
+}
+
+function renderConfigDocumentos() {
+  const panel = document.getElementById('config-doc-cat-panel');
+  if (!panel) return;
+  if (!DOCUMENTOS_CAT.length) {
+    panel.innerHTML = `<div class="empty-state"><div class="empty-icon">◫</div><div class="empty-text">Sin documentos</div><div class="empty-sub">Usá + Documento para agregar</div></div>`;
+    return;
+  }
+
+  const sinTildes = t => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  const busqueda = sinTildes((document.getElementById('filtro-doc-buscar')?.value || '').toLowerCase().trim());
+
+  const filtrados = DOCUMENTOS_CAT
+    .filter(d => filtroDocCat === 'todos' || (d.Doc_Cat || 'Otros') === filtroDocCat)
+    .filter(d => !busqueda || sinTildes(d.Doc_Nombre.toLowerCase()).includes(busqueda) || sinTildes((d.Doc_Descripcion || '').toLowerCase()).includes(busqueda));
+
+  const activos   = filtrados.filter(d => d.Doc_Estado !== 'Inactivo')
+                      .sort((a,b) => a.Doc_Nombre.localeCompare(b.Doc_Nombre, 'es'));
+  const inactivos = filtrados.filter(d => d.Doc_Estado === 'Inactivo')
+                      .sort((a,b) => a.Doc_Nombre.localeCompare(b.Doc_Nombre, 'es'));
+
+  if (!activos.length && !inactivos.length) {
+    panel.innerHTML = `<div class="empty-state"><div class="empty-text">Sin documentos en esta categoría</div></div>`;
+    return;
+  }
+
+  const renderItem = (d, esInactivo) => {
+    const nombre = d.Doc_Nombre.replace(/'/g,"\\'");
+    const catMap = { 'Finanzas': 'EF', 'Finanzas y Otros': 'FO', 'Otros': 'O' };
+    const sigla  = catMap[d.Doc_Cat] || 'O';
+    const siglaHtml = `<span style="font-size:9px;font-family:var(--font-mono);color:var(--muted);letter-spacing:.5px;">${sigla}</span>`;
+    const btnEditar = `
+      <button class="config-srv-btn" title="Editar"
+        onclick="abrirEditDocCfg('${d.Doc_ID}')">✎</button>`;
+    const botonesInactivo = `
+      ${siglaHtml}${btnEditar}
+      <button class="config-srv-btn alta" title="Reactivar"
+        onclick="cambiarEstadoDocumento('${d.Doc_ID}','${nombre}',true,this)">↑</button>
+      <button class="config-srv-btn eliminar" title="Eliminar definitivamente"
+        onclick="confirmarEliminarDocumento('${d.Doc_ID}','${nombre}',this)">🗑</button>`;
+    const botonActivo = `
+      ${siglaHtml}${btnEditar}
+      <button class="config-srv-btn baja" title="Dar de baja"
+        onclick="cambiarEstadoDocumento('${d.Doc_ID}','${nombre}',false,this)">×</button>`;
+    return `<div class="config-doc-row ${esInactivo ? 'inactivo' : ''}">
+      <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">· ${d.Doc_Nombre}</span>
+      ${esInactivo ? botonesInactivo : botonActivo}
+    </div>`;
+  };
+
+  const sepInactivos = inactivos.length > 0
+    ? `<div style="font-size:10px;font-family:var(--font-mono);color:var(--muted);text-transform:uppercase;letter-spacing:1px;padding:10px 16px 4px;">Inactivos</div>`
+    : '';
+
+  panel.innerHTML = activos.map(d => renderItem(d, false)).join('')
+    + sepInactivos
+    + inactivos.map(d => renderItem(d, true)).join('');
+}
+
+async function cambiarEstadoDocumento(docId, docNombre, estaInactivo, btn) {
+  const nuevoEstado = estaInactivo ? 'Activo' : 'Inactivo';
+  setLoading(btn, true);
+  try {
+    await gasPost({ accion: 'actualizarDocumento', data: { Doc_ID: docId, Doc_Estado: nuevoEstado } });
+    DOCUMENTOS_CAT = await gasPost({ accion: 'getDocumentos' });
+    renderConfigDocumentos();
+    if (configServicioActivo) {
+      const srv = SERVICIOS_CAT.find(s => s.Servicio_ID === configServicioActivo);
+      if (srv) selectConfigServicio(srv.Servicio_ID, srv.Servicio_Nombre);
+    }
+    showToast(estaInactivo ? `✓ "${docNombre}" reactivado.` : `"${docNombre}" dado de baja.`);
+  } catch(e) {
+    showToast('Error: ' + e.message, 'error');
+  } finally {
+    setLoading(btn, false);
+  }
+}
+
+function abrirEditDocCfg(docId) {
+  const doc = DOCUMENTOS_CAT.find(d => d.Doc_ID === docId);
+  if (!doc) return;
+  document.getElementById('edit-doc-id').value      = doc.Doc_ID;
+  document.getElementById('edit-doc-nombre').value  = doc.Doc_Nombre  || '';
+  document.getElementById('edit-doc-desc').value    = doc.Doc_Descripcion || '';
+  document.getElementById('edit-doc-cat').value     = doc.Doc_Cat     || 'Otros';
+  document.getElementById('edit-doc-estado').value  = doc.Doc_Estado  || 'Activo';
+  openModal('modal-editar-doc-cfg');
+}
+
+async function guardarEditDocCfg() {
+  const id     = document.getElementById('edit-doc-id').value;
+  const nombre = document.getElementById('edit-doc-nombre').value.trim();
+  if (!nombre) return showToast('El nombre es obligatorio.', 'error');
+  const data = {
+    Doc_ID:          id,
+    Doc_Nombre:      nombre,
+    Doc_Descripcion: document.getElementById('edit-doc-desc').value.trim(),
+    Doc_Cat:         document.getElementById('edit-doc-cat').value,
+    Doc_Estado:      document.getElementById('edit-doc-estado').value,
+  };
+  const btn = document.querySelector('#modal-editar-doc-cfg .btn-sm.primary');
+  setLoading(btn, true);
+  try {
+    await gasPost({ accion: 'actualizarDocumento', data });
+    DOCUMENTOS_CAT = await gasPost({ accion: 'getDocumentos' });
+    renderConfigDocumentos();
+    closeModal('modal-editar-doc-cfg');
+    showToast('Documento actualizado.');
+  } catch(e) {
+    showToast('Error: ' + e.message, 'error');
+  } finally {
+    setLoading(btn, false);
+  }
+}
+
+function confirmarEliminarDocumento(docId, docNombre, btn) {
+  abrirConfirm(
+    `¿Eliminar definitivamente "${docNombre}"?`,
+    'Esta acción no se puede deshacer. El documento será borrado del catálogo.',
+    async () => {
+      await gasPost({ accion: 'eliminarDocumento', data: { Doc_ID: docId } });
+      DOCUMENTOS_CAT = await gasPost({ accion: 'getDocumentos' });
+      renderConfigDocumentos();
+      if (configServicioActivo) {
+        const srv = SERVICIOS_CAT.find(s => s.Servicio_ID === configServicioActivo);
+        if (srv) selectConfigServicio(srv.Servicio_ID, srv.Servicio_Nombre);
+      }
+      showToast(`"${docNombre}" eliminado definitivamente.`);
+    }
+  );
 }
 
 function renderConfigServicios() {
   const list = document.getElementById('config-servicio-list');
   if (!list) return;
-  list.innerHTML = SERVICIOS_CAT.map(s => {
-    // Contar docs que aplican en la Matriz
+
+  // Ordenar A-Z, activos primero, inactivos al final
+  const activos   = [...SERVICIOS_CAT].filter(s => s.Servicio_Estado !== 'Inactivo')
+                      .sort((a,b) => a.Servicio_Nombre.localeCompare(b.Servicio_Nombre, 'es'));
+  const inactivos = [...SERVICIOS_CAT].filter(s => s.Servicio_Estado === 'Inactivo')
+                      .sort((a,b) => a.Servicio_Nombre.localeCompare(b.Servicio_Nombre, 'es'));
+
+  const renderItem = (s, esInactivo) => {
     const matrizRow = (MATRIZ.rows || []).find(r => r.Servicio_ID === s.Servicio_ID);
     const cnt = matrizRow ? matrizRow.docs.length : 0;
-    return `<div class="config-servicio-item ${configServicioActivo === s.Servicio_ID ? 'active' : ''}"
-              onclick="selectConfigServicio('${s.Servicio_ID}','${s.Servicio_Nombre.replace(/'/g,"\\'")}')">
-      <span>${s.Servicio_Nombre}</span>
+    const nombre = s.Servicio_Nombre.replace(/'/g,"\\'");
+    const botonesInactivo = `
+      <button class="config-srv-btn alta" title="Reactivar"
+        onclick="event.stopPropagation();cambiarEstadoServicio('${s.Servicio_ID}','${nombre}',true,this)">↑</button>
+      <button class="config-srv-btn eliminar" title="Eliminar definitivamente"
+        onclick="event.stopPropagation();confirmarEliminarServicio('${s.Servicio_ID}','${nombre}',this)">🗑</button>`;
+    const botonActivo = `
+      <button class="config-srv-btn baja" title="Dar de baja"
+        onclick="event.stopPropagation();cambiarEstadoServicio('${s.Servicio_ID}','${nombre}',false,this)">×</button>`;
+    return `<div class="config-servicio-item ${configServicioActivo === s.Servicio_ID ? 'active' : ''} ${esInactivo ? 'inactivo' : ''}"
+              onclick="selectConfigServicio('${s.Servicio_ID}','${nombre}')">
+      <span class="config-servicio-nombre">${s.Servicio_Nombre}</span>
       <span class="config-doc-count">${cnt}</span>
+      ${esInactivo ? botonesInactivo : botonActivo}
     </div>`;
-  }).join('') || `<div style="font-size:12px;color:var(--muted);padding:10px">Sin servicios configurados</div>`;
+  };
+
+  const sepInactivos = inactivos.length > 0
+    ? `<div style="font-size:10px;font-family:var(--font-mono);color:var(--muted);text-transform:uppercase;letter-spacing:1px;padding:10px 4px 4px;">Inactivos</div>`
+    : '';
+
+  list.innerHTML = (activos.map(s => renderItem(s, false)).join('')
+    + sepInactivos
+    + inactivos.map(s => renderItem(s, true)).join(''))
+    || `<div style="font-size:12px;color:var(--muted);padding:10px">Sin servicios configurados</div>`;
+}
+
+function confirmarEliminarServicio(srvId, srvNombre, btn) {
+  configServicioActivo = srvId;
+  selectConfigServicio(srvId, srvNombre);
+  abrirConfirm(
+    `¿Eliminar definitivamente "${srvNombre}"?`,
+    'Esta acción no se puede deshacer. El servicio será borrado del catálogo.',
+    async () => {
+      await gasPost({ accion: 'eliminarServicio', data: { Servicio_ID: srvId } });
+      SERVICIOS_CAT = await gasPost({ accion: 'getServicios' });
+      configServicioActivo = null;
+      document.getElementById('config-panel').innerHTML = `<div class="empty-state"><div class="empty-icon">◈</div><div class="empty-text">Seleccioná un tipo de servicio</div><div class="empty-sub">para ver su documentación requerida</div></div>`;
+      renderConfigServicios();
+      showToast(`"${srvNombre}" eliminado definitivamente.`);
+    }
+  );
+}
+
+async function cambiarEstadoServicio(srvId, srvNombre, estaInactivo, btn) {
+  const nuevoEstado = estaInactivo ? 'Activo' : 'Inactivo';
+  configServicioActivo = srvId;
+  setLoading(btn, true);
+  try {
+    await gasPost({ accion: 'actualizarServicio', data: { Servicio_ID: srvId, Servicio_Estado: nuevoEstado } });
+    SERVICIOS_CAT = await gasPost({ accion: 'getServicios' });
+    renderConfigServicios();
+    selectConfigServicio(srvId, srvNombre);
+    showToast(estaInactivo ? `✓ "${srvNombre}" reactivado.` : `"${srvNombre}" dado de baja.`);
+  } catch(e) {
+    showToast('Error: ' + e.message, 'error');
+  } finally {
+    setLoading(btn, false);
+  }
 }
 
 function selectConfigServicio(srvId, srvNombre) {
@@ -1911,13 +2595,21 @@ function selectConfigServicio(srvId, srvNombre) {
   const matrizRow = (MATRIZ.rows || []).find(r => r.Servicio_ID === srvId);
   const docsActivos = matrizRow ? matrizRow.docs : [];
 
-  const docRows = DOCUMENTOS_CAT.map(doc => {
+  // Ordenar: activos A-Z primero, inactivos A-Z después
+  const sorted = [...DOCUMENTOS_CAT].sort((a, b) => {
+    const aActivo = docsActivos.includes(a.Doc_ID);
+    const bActivo = docsActivos.includes(b.Doc_ID);
+    if (aActivo !== bActivo) return aActivo ? -1 : 1;
+    return a.Doc_Nombre.localeCompare(b.Doc_Nombre, 'es');
+  });
+
+  const docRows = sorted.map(doc => {
     const activo = docsActivos.includes(doc.Doc_ID);
     return `<div class="config-doc-row">
       <span>· ${doc.Doc_Nombre}</span>
       <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-family:var(--font-mono);font-size:11px;color:var(--muted)">
         <input type="checkbox" ${activo ? 'checked' : ''}
-          onchange="toggleMatriz('${srvId}','${doc.Doc_ID}',this.checked)"
+          onchange="toggleMatriz('${srvId}','${doc.Doc_ID}',this.checked,this)"
           style="accent-color:var(--accent);width:14px;height:14px;cursor:pointer"/>
         ${activo ? '<span style="color:var(--success)">Activo</span>' : 'Inactivo'}
       </label>
@@ -1927,23 +2619,58 @@ function selectConfigServicio(srvId, srvNombre) {
   panel.innerHTML = `
     <div class="config-panel-header">
       <div class="config-panel-title">${srvNombre}</div>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <button onclick="limpiarBuscadorDocReq()" title="Limpiar búsqueda"
+          style="background:none;border:none;color:var(--muted);padding:2px 4px;cursor:pointer;display:flex;align-items:center;line-height:1;">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+        </button>
+        <input id="filtro-doc-req" type="text" placeholder="buscar..." oninput="filtrarDocReq()"
+          style="font-size:11px;font-family:var(--font-mono);background:var(--bg);border:1px solid var(--border);color:var(--text);padding:2px 8px;width:130px;outline:none;"/>
+        <span style="font-family:var(--font-mono);font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;">Tildar Obligatorios</span>
+      </div>
     </div>
+    <div id="config-panel-doc-list">
     ${DOCUMENTOS_CAT.length === 0
       ? '<div class="empty-state"><div class="empty-icon">◫</div><div class="empty-text">Sin documentos en el catálogo</div><div class="empty-sub">Agregá documentos desde la pestaña Documentos</div></div>'
       : docRows
-    }`;
+    }
+    </div>`;
 }
 
-async function toggleMatriz(srvId, docId, activo) {
+function filtrarDocReq() {
+  const sinTildes = t => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  const q = sinTildes((document.getElementById('filtro-doc-req')?.value || '').toLowerCase().trim());
+  const list = document.getElementById('config-panel-doc-list');
+  if (!list) return;
+  const rows = list.querySelectorAll('.config-doc-row');
+  rows.forEach(row => {
+    const texto = sinTildes(row.querySelector('span')?.textContent?.toLowerCase() || '');
+    row.style.display = (!q || texto.includes(q)) ? '' : 'none';
+  });
+}
+
+function limpiarBuscadorDocReq() {
+  const input = document.getElementById('filtro-doc-req');
+  if (input) { input.value = ''; filtrarDocReq(); }
+}
+
+async function toggleMatriz(srvId, docId, activo, checkbox) {
+  // Spinner: deshabilitar checkbox mientras guarda
+  if (checkbox) { checkbox.disabled = true; checkbox.style.opacity = '.4'; }
   try {
     await gasPost({ accion: 'setMatrizCelda', data: { Servicio_ID: srvId, Doc_ID: docId, valor: activo ? 'X' : '' } });
-    // Actualizar MATRIZ local
     const m = await gasPost({ accion: 'getMatriz' });
     MATRIZ = m || { headers: [], rows: [] };
+    // Re-renderizar manteniendo el servicio seleccionado con el orden actualizado
+    const srv = SERVICIOS_CAT.find(s => s.Servicio_ID === srvId);
+    if (srv) selectConfigServicio(srvId, srv.Servicio_Nombre);
     renderConfigServicios();
     showToast(activo ? '✓ Documento activado en la Matriz.' : 'Documento desactivado.');
   } catch(e) {
+    if (checkbox) checkbox.checked = !activo; // revertir si falla
     showToast('Error: ' + e.message, 'error');
+  } finally {
+    if (checkbox) { checkbox.disabled = false; checkbox.style.opacity = '1'; }
   }
 }
 
@@ -1951,6 +2678,8 @@ async function crearTipoServicio() {
   const nombre = document.getElementById('cfg-srv-nombre').value.trim();
   const desc   = document.getElementById('cfg-srv-desc') ? document.getElementById('cfg-srv-desc').value.trim() : '';
   if (!nombre) return showToast('Ingresá un nombre.', 'error');
+  const existe = SERVICIOS_CAT.some(s => s.Servicio_Nombre.toLowerCase() === nombre.toLowerCase());
+  if (existe) return showToast('Ya existe un servicio con ese nombre.', 'error');
   const btn = document.querySelector('#modal-nuevo-servicio-cfg .btn-sm.primary');
   setLoading(btn, true);
   try {
@@ -1959,6 +2688,7 @@ async function crearTipoServicio() {
     renderConfigServicios();
     closeModal('modal-nuevo-servicio-cfg');
     document.getElementById('cfg-srv-nombre').value = '';
+    document.getElementById('cfg-srv-desc').value = '';
     showToast('Servicio creado.');
   } catch(e) {
     showToast('Error: ' + e.message, 'error');
@@ -1968,20 +2698,26 @@ async function crearTipoServicio() {
 }
 
 async function crearDocumentoCat() {
-  const nombre = document.getElementById('cfg-doc-nombre').value.trim();
-  const desc   = document.getElementById('cfg-doc-desc') ? document.getElementById('cfg-doc-desc').value.trim() : '';
+  const nombre    = document.getElementById('cfg-doc-nombre').value.trim();
+  const desc      = document.getElementById('cfg-doc-desc') ? document.getElementById('cfg-doc-desc').value.trim() : '';
+  const docCat    = document.getElementById('cfg-doc-finanzas').value;
   if (!nombre) return showToast('Ingresá un nombre.', 'error');
+  const existe = DOCUMENTOS_CAT.some(d => d.Doc_Nombre.toLowerCase() === nombre.toLowerCase());
+  if (existe) return showToast('Ya existe un documento con ese nombre.', 'error');
   const btn = document.querySelector('#modal-nuevo-doc-cfg .btn-sm.primary');
   setLoading(btn, true);
   try {
-    await gasPost({ accion: 'crearDocumento', data: { Doc_Nombre: nombre, Doc_Descripcion: desc } });
+    await gasPost({ accion: 'crearDocumento', data: { Doc_Nombre: nombre, Doc_Descripcion: desc, Doc_Cat: docCat } });
     DOCUMENTOS_CAT = await gasPost({ accion: 'getDocumentos' });
+    renderConfigDocumentos();
     if (configServicioActivo) {
       const srv = SERVICIOS_CAT.find(s => s.Servicio_ID === configServicioActivo);
       if (srv) selectConfigServicio(srv.Servicio_ID, srv.Servicio_Nombre);
     }
     closeModal('modal-nuevo-doc-cfg');
     document.getElementById('cfg-doc-nombre').value = '';
+    document.getElementById('cfg-doc-desc').value = '';
+    document.getElementById('cfg-doc-finanzas').value = 'Otros';
     showToast('Documento creado en el catálogo.');
   } catch(e) {
     showToast('Error: ' + e.message, 'error');
@@ -1999,6 +2735,161 @@ function eliminarTipoServicio() { showToast('Función próximamente.'); }
 // ═══════════════════════════════════════════════════════════
 // 13 - LOG
 // ═══════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
+// 13 - CONSULTA
+// ═══════════════════════════════════════════════════════════
+let consultaSrvActivo = null;
+
+function renderConsulta() {
+  const list = document.getElementById('consulta-srv-list');
+  if (!list) return;
+
+  // Solo servicios activos que tienen al menos un doc en la Matriz
+  const servicios = SERVICIOS_CAT
+    .filter(s => s.Servicio_Estado !== 'Inactivo')
+    .filter(s => {
+      const row = (MATRIZ.rows || []).find(r => r.Servicio_ID === s.Servicio_ID);
+      return row && row.docs.length > 0;
+    })
+    .sort((a,b) => a.Servicio_Nombre.localeCompare(b.Servicio_Nombre, 'es'));
+
+  if (!servicios.length) {
+    list.innerHTML = `<div style="font-size:12px;color:var(--muted);padding:10px;">Sin servicios con documentos configurados</div>`;
+    return;
+  }
+
+  list.innerHTML = servicios.map(s => {
+    const row = (MATRIZ.rows || []).find(r => r.Servicio_ID === s.Servicio_ID);
+    const cnt = row ? row.docs.length : 0;
+    return `<div class="consulta-srv-item ${consultaSrvActivo === s.Servicio_ID ? 'active' : ''}"
+      onclick="selectConsultaServicio('${s.Servicio_ID}','${s.Servicio_Nombre.replace(/'/g,"\\'")}')">
+      <span>${s.Servicio_Nombre}</span>
+      <span style="font-size:10px;font-family:var(--font-mono);color:var(--muted);background:var(--bg);border:1px solid var(--border);padding:1px 6px;">${cnt}</span>
+    </div>`;
+  }).join('');
+}
+
+let consultaFiltroCat = 'todos';
+
+function selectConsultaServicio(srvId, srvNombre) {
+  consultaSrvActivo = srvId;
+  consultaFiltroCat = 'todos';
+  renderConsulta();
+  _renderConsultaPanel(srvId, srvNombre);
+}
+
+function _renderConsultaPanel(srvId, srvNombre) {
+  const panel = document.getElementById('consulta-doc-panel');
+  const row   = (MATRIZ.rows || []).find(r => r.Servicio_ID === srvId);
+  const docIds = row ? row.docs : [];
+  const docMap = {};
+  DOCUMENTOS_CAT.forEach(d => docMap[d.Doc_ID] = d.Doc_Nombre);
+
+  const catMap = { 'Finanzas': 'EF', 'Finanzas y Otros': 'FO', 'Otros': 'O' };
+  const docMapCat = {};
+  DOCUMENTOS_CAT.forEach(d => { docMapCat[d.Doc_ID] = d.Doc_Cat || 'Otros'; });
+  const catValMap = { 'EF': 'Finanzas', 'FO': 'Finanzas y Otros', 'O': 'Otros' };
+
+  const allDocs = docIds
+    .map(id => ({ docId: id, nombre: docMap[id] || id, cat: docMapCat[id] || 'Otros' }))
+    .sort((a,b) => a.nombre.localeCompare(b.nombre, 'es'));
+
+  const filtered = consultaFiltroCat === 'todos'
+    ? allDocs
+    : allDocs.filter(d => d.cat === catValMap[consultaFiltroCat]);
+
+  const btnStyle = (key) => {
+    const base = 'background:none;border:1px solid var(--border);font-size:10px;font-family:var(--font-mono);padding:2px 7px;cursor:pointer;letter-spacing:.5px;transition:all .12s;';
+    return base + (consultaFiltroCat === key
+      ? 'border-color:var(--accent);color:var(--accent);background:rgba(59,130,246,.08);'
+      : 'color:var(--muted);');
+  };
+
+  panel.innerHTML = `
+    <div style="padding:10px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:8px;">
+      <span style="font-size:13px;font-weight:500;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${srvNombre}</span>
+      <div style="display:flex;align-items:center;gap:5px;flex-shrink:0;">
+        <button onclick="setConsultaFiltroCat('todos')" style="${btnStyle('todos')}">Todos</button>
+        <button onclick="setConsultaFiltroCat('O')"     style="${btnStyle('O')}">O</button>
+        <button onclick="setConsultaFiltroCat('EF')"    style="${btnStyle('EF')}">EF</button>
+        <button onclick="setConsultaFiltroCat('FO')"    style="${btnStyle('FO')}">FO</button>
+        <button onclick="copiarDocsConsulta()" title="Copiar al portapapeles"
+          style="background:none;border:1px solid var(--border);color:var(--muted);font-size:11px;font-family:var(--font-mono);padding:3px 9px;cursor:pointer;letter-spacing:.5px;"
+          id="btn-copiar-docs">COPIAR</button>
+      </div>
+    </div>
+    <div id="consulta-doc-list">
+    ${filtered.length === 0
+      ? `<div style="padding:20px 16px;font-size:12px;font-family:var(--font-mono);color:var(--muted);text-align:center;">Sin documentos en esta categoría</div>`
+      : filtered.map((d, i) => `<div class="consulta-doc-row" data-nombre="${d.nombre.replace(/"/g,'&quot;')}" onclick="selectConsultaDoc('${d.docId}')">
+          <span style="font-family:var(--font-mono);font-size:11px;color:var(--muted);min-width:18px;margin-right:0;">${String(i+1).padStart(2,'0')}.</span>
+          <span style="flex:1;">${d.nombre}</span>
+          <span style="font-family:var(--font-mono);font-size:9px;color:var(--muted);margin-left:8px;">${catMap[d.cat] || 'O'}</span>
+        </div>`).join('')
+    }
+    </div>`;
+}
+
+function setConsultaFiltroCat(cat) {
+  consultaFiltroCat = cat;
+  if (!consultaSrvActivo) return;
+  const srv = SERVICIOS_CAT.find(s => s.Servicio_ID === consultaSrvActivo);
+  if (srv) _renderConsultaPanel(consultaSrvActivo, srv.Servicio_Nombre);
+}
+
+function copiarDocsConsulta() {
+  const filas = document.querySelectorAll('#consulta-doc-list .consulta-doc-row');
+  const texto = Array.from(filas).map((f, i) => `${i+1}. ${f.dataset.nombre}`).join('\n');
+  navigator.clipboard.writeText(texto).then(() => {
+    const btn = document.getElementById('btn-copiar-docs');
+    const original = btn.textContent;
+    btn.textContent = '✓ COPIADO';
+    btn.style.color = 'var(--success)';
+    btn.style.borderColor = 'var(--success)';
+    setTimeout(() => {
+      btn.textContent = original;
+      btn.style.color = '';
+      btn.style.borderColor = '';
+    }, 2000);
+  }).catch(() => showToast('No se pudo copiar.', 'error'));
+}
+
+function selectConsultaDoc(docId) {
+  const doc = DOCUMENTOS_CAT.find(d => d.Doc_ID === docId);
+  const panel = document.getElementById('consulta-detalle-panel');
+  if (!panel) return;
+
+  // Marcar fila activa
+  document.querySelectorAll('#consulta-doc-panel .consulta-doc-row').forEach(r => r.classList.remove('active'));
+  const fila = document.querySelector(`#consulta-doc-panel .consulta-doc-row[data-nombre="${(doc?.Doc_Nombre||'').replace(/"/g,'&quot;')}"]`);
+  if (fila) fila.classList.add('active');
+
+  if (!doc) { panel.innerHTML = `<div class="empty-state"><div class="empty-text" style="font-size:12px;">Sin información</div></div>`; return; }
+
+  const catMap  = { 'Finanzas': 'Exclusivo Finanzas', 'Finanzas y Otros': 'Finanzas y Otros', 'Otros': 'Otros Sectores' };
+  const catLabel = catMap[doc.Doc_Cat] || 'Otros Sectores';
+
+  panel.innerHTML = `
+    <div style="padding:14px 16px;border-bottom:1px solid var(--border);">
+      <div style="font-size:13px;font-weight:500;margin-bottom:4px;">${doc.Doc_Nombre}</div>
+      <div style="font-size:10px;font-family:var(--font-mono);color:var(--muted);">${doc.Doc_ID}</div>
+    </div>
+    <div style="padding:14px 16px;display:flex;flex-direction:column;gap:12px;">
+      <div>
+        <div style="font-size:10px;font-family:var(--font-mono);color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px;">Descripción</div>
+        <div style="font-size:13px;color:${doc.Doc_Descripcion ? 'var(--text)' : 'var(--muted)'};">${doc.Doc_Descripcion || '—'}</div>
+      </div>
+      <div>
+        <div style="font-size:10px;font-family:var(--font-mono);color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px;">Sector Responsable</div>
+        <div style="font-size:13px;">${catLabel}</div>
+      </div>
+      <div>
+        <div style="font-size:10px;font-family:var(--font-mono);color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px;">Estado</div>
+        <div style="font-size:13px;">${doc.Doc_Estado || '—'}</div>
+      </div>
+    </div>`;
+}
+
 async function cargarLog() {
   try {
     const log = await gasPost({ accion: 'getLog', limite: 100 });
@@ -2054,34 +2945,9 @@ function toggleTema() {
 
 
 // ═══════════════════════════════════════════════════════════
-// 16 - TABS CONFIGURACION
+// 16 - TEMA CLARO/OSCURO Y EVENTOS GLOBALES
 // ═══════════════════════════════════════════════════════════
-function switchConfigTab(tab) {
-  document.querySelectorAll('.config-tab').forEach(t => t.classList.remove('active'));
-  document.querySelectorAll('.config-tab-content').forEach(t => t.classList.remove('active'));
-  document.getElementById('tab-' + tab).classList.add('active');
-  document.getElementById('tabcontent-' + tab).classList.add('active');
-}
-
-function guardarConfigGeneral() {
-  const nombre = document.getElementById('cfg-app-nombre').value.trim();
-  const logo   = document.getElementById('cfg-app-logo').value.trim();
-  // Actualizar preview
-  document.getElementById('cfg-logo-preview').src = logo;
-  // Actualizar topbar logo
-  const topbarImg = document.querySelector('.topbar-logo img');
-  if (topbarImg) topbarImg.src = logo;
-  showToast('Configuración guardada.');
-}
-
-// Preview logo en tiempo real
 document.addEventListener('DOMContentLoaded', () => {
-  const logoInput = document.getElementById('cfg-app-logo');
-  if (logoInput) {
-    logoInput.addEventListener('input', () => {
-      document.getElementById('cfg-logo-preview').src = logoInput.value;
-    });
-  }
   // Restaurar ícono tema si corresponde
   if (localStorage.getItem('gestdoc_tema') === 'light') {
     const btn = document.getElementById('btn-tema');
@@ -2097,6 +2963,765 @@ document.querySelectorAll('.modal-overlay').forEach(overlay => {
     if (e.target === overlay) overlay.classList.remove('open');
   });
 });
+
+// ═══════════════════════════════════════════════════════════
+// 17 - NUEVO SERVICIO
+// ═══════════════════════════════════════════════════════════
+
+function abrirNuevoServicio(obraId, srvId, proveedor) {
+  // Reset estado
+  nuevoSrvState = { obraId: obraId || null, srvId: srvId || null, proveedor: proveedor || null, empresa: null, docs: [], modoEdicion: !!(obraId && srvId && proveedor) };
+
+  // Título según modo
+  const titulo = document.getElementById('nsrv-titulo');
+  const sub    = document.getElementById('nsrv-subtitulo');
+  if (nuevoSrvState.modoEdicion) {
+    titulo.textContent = 'Editar Servicio';
+    sub.textContent    = '// Actualizá la documentación del servicio';
+  } else {
+    titulo.textContent = 'Nuevo Servicio';
+    sub.textContent    = '// Registrá un nuevo servicio para una obra';
+  }
+
+  // Poblar desplegables
+  poblarSelectProveedores();
+  poblarSelectServicios();
+  poblarSelectObras();
+
+  // Pre-seleccionar si viene con datos
+  if (nuevoSrvState.empresa) {
+    document.getElementById('nsrv-empresa').value = nuevoSrvState.empresa;
+    poblarSelectObras();
+  }
+  if (proveedor) {
+    document.getElementById('nsrv-proveedor').value       = proveedor;
+    document.getElementById('nsrv-proveedor-input').value = proveedor;
+  }
+  if (srvId) {
+    const srv = SERVICIOS_CAT.find(s => s.Servicio_ID === srvId);
+    document.getElementById('nsrv-servicio').value       = srvId;
+    document.getElementById('nsrv-servicio-input').value = srv ? srv.Servicio_Nombre : srvId;
+  }
+  if (obraId)    document.getElementById('nsrv-obra').value      = obraId;
+
+  showView('nuevo-servicio');
+  onNsrvChange();
+}
+
+let _proveedoresFiltradosCache = [];
+
+function poblarSelectProveedores() {
+  let lista = PROVEEDORES.map(p => p.Nombre || p.Proveedor || p).filter(Boolean);
+  if (!lista.length) {
+    // fallback: proveedores ya usados en documentacion
+    lista = [...new Set(DOCUMENTACION.map(d => d.Proveedor).filter(Boolean))];
+  }
+  _proveedoresFiltradosCache = lista.sort((a,b) => a.localeCompare(b,'es'));
+}
+
+function abrirProveedoresDropdown() {
+  poblarSelectProveedores();
+  renderProveedoresDropdown(_proveedoresFiltradosCache);
+}
+
+function filtrarProveedoresDropdown() {
+  const q = document.getElementById('nsrv-proveedor-input').value.toLowerCase().trim();
+  if (!q) {
+    document.getElementById('nsrv-proveedor').value = '';
+    onNsrvChange();
+  }
+  const filtrados = q
+    ? _proveedoresFiltradosCache.filter(p => p.toLowerCase().includes(q))
+    : _proveedoresFiltradosCache;
+  renderProveedoresDropdown(filtrados);
+}
+
+function renderProveedoresDropdown(lista) {
+  const dd = document.getElementById('nsrv-proveedor-dropdown');
+  if (!lista.length) {
+    dd.innerHTML = `<div style="padding:10px 14px;font-size:12px;color:var(--muted);font-family:var(--font-mono);">Sin resultados</div>`;
+  } else {
+    dd.innerHTML = lista.map(p => `
+      <div class="nsrv-prov-option" onmousedown="seleccionarProveedor('${p.replace(/'/g,"\'")}')">
+        ${p}
+      </div>`).join('');
+  }
+  dd.style.display = '';
+}
+
+function seleccionarProveedor(nombre) {
+  document.getElementById('nsrv-proveedor').value       = nombre;
+  document.getElementById('nsrv-proveedor-input').value = nombre;
+  cerrarProveedoresDropdown();
+  onNsrvChange();
+}
+
+function cerrarProveedoresDropdown() {
+  document.getElementById('nsrv-proveedor-dropdown').style.display = 'none';
+}
+
+let _serviciosFiltradosCache = [];
+
+function poblarSelectServicios() {
+  _serviciosFiltradosCache = SERVICIOS_CAT
+    .filter(s => s.Servicio_Estado !== 'Inactivo')
+    .sort((a,b) => a.Servicio_Nombre.localeCompare(b.Servicio_Nombre,'es'));
+}
+
+function abrirServiciosDropdown() {
+  poblarSelectServicios();
+  renderServiciosDropdown(_serviciosFiltradosCache);
+}
+
+function filtrarServiciosDropdown() {
+  const q = document.getElementById('nsrv-servicio-input').value.toLowerCase().trim();
+  if (!q) {
+    document.getElementById('nsrv-servicio').value = '';
+    onNsrvChange();
+  }
+  const filtrados = q
+    ? _serviciosFiltradosCache.filter(s => s.Servicio_Nombre.toLowerCase().includes(q))
+    : _serviciosFiltradosCache;
+  renderServiciosDropdown(filtrados);
+}
+
+function renderServiciosDropdown(lista) {
+  const dd = document.getElementById('nsrv-servicio-dropdown');
+  if (!lista.length) {
+    dd.innerHTML = `<div style="padding:10px 14px;font-size:12px;color:var(--muted);font-family:var(--font-mono);">Sin resultados</div>`;
+  } else {
+    dd.innerHTML = lista.map(s => `
+      <div class="nsrv-srv-option" onmousedown="seleccionarServicio('${s.Servicio_ID}','${s.Servicio_Nombre.replace(/'/g,"\'")}')">
+        ${s.Servicio_Nombre}
+      </div>`).join('');
+  }
+  dd.style.display = '';
+}
+
+function seleccionarServicio(id, nombre) {
+  document.getElementById('nsrv-servicio').value       = id;
+  document.getElementById('nsrv-servicio-input').value = nombre;
+  cerrarServiciosDropdown();
+  onNsrvChange();
+}
+
+function cerrarServiciosDropdown() {
+  document.getElementById('nsrv-servicio-dropdown').style.display = 'none';
+}
+
+// Lista completa de obras filtradas por empresa (se recalcula al cambiar empresa)
+let _obrasFiltradasCache = [];
+
+function onNsrvEmpresaChange() {
+  // Resetear obra
+  document.getElementById('nsrv-obra').value = '';
+  document.getElementById('nsrv-obra-input').value = '';
+  cerrarObrasDropdown();
+  document.getElementById('nsrv-docs-wrap').style.display = 'none';
+  document.getElementById('nsrv-empty').style.display = '';
+  poblarSelectObras();
+}
+
+function poblarSelectObras() {
+  const empresa = (document.getElementById('nsrv-empresa')?.value || '').toLowerCase().trim();
+  const fuente  = OBRAS_BEJERMAN.length ? OBRAS_BEJERMAN : OBRAS;
+
+    _obrasFiltradasCache = fuente
+    .filter(o => {
+      const UN = (o.UN || o.empresa || '').toLowerCase().trim();
+      // Si no hay empresa seleccionada, mostrar todas
+      if (empresa && UN !== empresa) return false;
+      // Excluir solo si Estado está explícitamente como Inactiva
+      if ((o.Estado || '') === 'Inactiva') return false;
+      return true;
+    })
+    .sort((a,b) => {
+      const na = (a.Nombre || a.nombre || '').toString();
+      const nb = (b.Nombre || b.nombre || '').toString();
+      return na.localeCompare(nb, 'es');
+    });
+
+}
+
+function abrirObrasDropdown() {
+  poblarSelectObras();
+  renderObrasDropdown(_obrasFiltradasCache);
+}
+
+function filtrarObrasDropdown() {
+  const q = document.getElementById('nsrv-obra-input').value.toLowerCase().trim();
+  // Si se borra el texto, limpiar la selección
+  if (!q) {
+    document.getElementById('nsrv-obra').value = '';
+    onNsrvChange();
+  }
+  const filtradas = q
+    ? _obrasFiltradasCache.filter(o => (o.Nombre||o.nombre||'').toLowerCase().includes(q))
+    : _obrasFiltradasCache;
+  renderObrasDropdown(filtradas);
+}
+
+function renderObrasDropdown(lista) {
+  const dd = document.getElementById('nsrv-obra-dropdown');
+  if (!lista.length) {
+    dd.innerHTML = `<div style="padding:10px 14px;font-size:12px;color:var(--muted);font-family:var(--font-mono);">Sin resultados</div>`;
+  } else {
+    dd.innerHTML = lista.map(o => {
+      const id     = o.Obra_ID || o.id || o.Codigo || o.Nombre || o.nombre || '';
+      const nombre = o.Nombre  || o.nombre || id;
+      return `<div class="nsrv-obra-option" data-id="${id}" data-nombre="${nombre}"
+        onmousedown="seleccionarObra('${id.replace(/'/g,"\'")}','${nombre.replace(/'/g,"\'")}')">
+        ${nombre}
+      </div>`;
+    }).join('');
+  }
+  dd.style.display = '';
+}
+
+function seleccionarObra(id, nombre) {
+  document.getElementById('nsrv-obra').value       = id;
+  document.getElementById('nsrv-obra-input').value = nombre;
+  cerrarObrasDropdown();
+  onNsrvChange();
+}
+
+function cerrarObrasDropdown() {
+  document.getElementById('nsrv-obra-dropdown').style.display = 'none';
+}
+
+function onNsrvChange() {
+  const proveedor = document.getElementById('nsrv-proveedor').value;
+  const srvId     = document.getElementById('nsrv-servicio').value;
+  const obraId    = document.getElementById('nsrv-obra').value;
+
+  const wrap  = document.getElementById('nsrv-docs-wrap');
+  const empty = document.getElementById('nsrv-empty');
+
+  if (!proveedor || !srvId || !obraId) {
+    wrap.style.display  = 'none';
+    empty.style.display = '';
+    return;
+  }
+
+  wrap.style.display  = '';
+  empty.style.display = 'none';
+
+  nuevoSrvState.empresa   = document.getElementById('nsrv-empresa')?.value || '';
+  nuevoSrvState.proveedor = proveedor;
+  nuevoSrvState.srvId     = srvId;
+  nuevoSrvState.obraId    = obraId;
+
+  renderNsrvDocs();
+}
+
+function nsrvNombreArchivo(vto, docNombre) {
+  const { empresa, proveedor, obraId } = nuevoSrvState;
+  // Buscar nombre legible de la obra
+  const fuenteObras = OBRAS_BEJERMAN.length ? OBRAS_BEJERMAN : OBRAS;
+  const obraObj = fuenteObras.find(o => (o.Obra_ID || o.id || o.Codigo || o.Nombre || o.nombre) === obraId);
+  const obraNombre = obraObj ? (obraObj.Nombre || obraObj.nombre || obraId) : obraId;
+
+  const limpiar = s => (s || '')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // quitar tildes
+    .replace(/[^a-zA-Z0-9\s]/g, '')                   // solo alfanum y espacios
+    .trim()
+    .replace(/\s+/g, '_');                             // espacios → _
+
+  const partes = [
+    limpiar(empresa),
+    limpiar(obraNombre),
+    limpiar(proveedor),
+    vto ? vto.replace(/-/g, '') : '',                  // fecha sin guiones: 20251231
+    limpiar(docNombre),
+  ].filter(Boolean);
+
+  return partes.join('_');
+}
+
+function renderNsrvDocs() {
+  const { srvId, obraId, proveedor } = nuevoSrvState;
+  const matrizRow = (MATRIZ.rows || []).find(r => r.Servicio_ID === srvId);
+  const allDocIds = matrizRow ? matrizRow.docs : [];
+  const docMap    = {};
+  DOCUMENTOS_CAT.forEach(d => { docMap[d.Doc_ID] = d; });
+
+  // Filtrar por perfil
+  const perfil = currentUser?.perfil || 'admin';
+  const docIds = allDocIds.filter(docId => {
+    const cat = docMap[docId]?.Doc_Cat || 'Otros';
+    if (perfil === 'finanzas') return cat === 'Finanzas' || cat === 'Finanzas y Otros';
+    if (perfil === 'obras')    return cat === 'Otros'    || cat === 'Finanzas y Otros';
+    return true; // admin y proveedor ven todo
+  });
+
+  // Buscar docs existentes para este combo (modo edición)
+  const existentes = DOCUMENTACION.filter(d =>
+    d.Obra_ID === obraId && d.Servicio_ID === srvId && d.Proveedor === proveedor
+  );
+  const existMap = {};
+  existentes.forEach(d => { existMap[d.Doc_ID] = d; });
+
+  const count = document.getElementById('nsrv-docs-count');
+  count.textContent = `${docIds.length} documento${docIds.length !== 1 ? 's' : ''} requerido${docIds.length !== 1 ? 's' : ''}`;
+
+  const list = document.getElementById('nsrv-doc-list');
+
+  if (!docIds.length) {
+    list.innerHTML = `<div style="padding:24px 16px;font-size:13px;color:var(--muted);font-family:var(--font-mono);">
+      Sin documentos configurados para este servicio. Revisá la Matriz en Configuración.</div>`;
+    return;
+  }
+
+  const catMap = { 'Finanzas': 'EF', 'Finanzas y Otros': 'FO', 'Otros': 'O' };
+
+  list.innerHTML = docIds.map((docId, idx) => {
+    const doc    = docMap[docId] || { Doc_Nombre: docId, Doc_Cat: 'Otros' };
+    const exist  = existMap[docId];
+    const sigla  = catMap[doc.Doc_Cat] || 'O';
+    const vto    = exist?.Doc_Vto ? String(exist.Doc_Vto).trim() : '';
+    const period = exist?.Doc_Periodicidad || '';
+    const archivo = exist?.Doc_NombreArchivo || '';
+    const link    = exist?.Doc_LinkArchivo   || '';
+    const estado  = exist?.Doc_Estado || 'Faltante';
+
+    const estadoColor = estado === 'Aprobado' ? '#6abf6a'
+      : estado === 'Rechazado' ? '#e05c5c'
+      : estado === 'Faltante'  ? 'var(--muted)'
+      : 'var(--muted)';
+    const estadoBadge = `<span style="font-size:9px;font-family:var(--font-mono);color:${estadoColor};text-transform:uppercase;letter-spacing:.5px;">${estado}</span>`;
+
+    return `<div class="nsrv-doc-row" id="nsrv-row-${idx}" data-docid="${docId}"
+      style="display:grid;grid-template-columns:minmax(200px,1fr) 112px 148px 44px minmax(160px,1fr);gap:0;padding:5px 16px;border-bottom:1px solid var(--border);align-items:center;"
+      ondragover="event.preventDefault();this.classList.add('nsrv-drag-over')"
+      ondragleave="this.classList.remove('nsrv-drag-over')"
+      ondrop="nsrvHandleDrop(event,${idx},'${docId}')">
+
+      <div style="display:flex;flex-direction:column;gap:2px;min-width:0;">
+        <span style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">· ${doc.Doc_Nombre}</span>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <span style="font-size:9px;font-family:var(--font-mono);color:var(--muted);">${sigla}</span>
+          ${estadoBadge}
+          ${archivo && link ? `<a href="${link}" target="_blank" style="font-size:10px;font-family:var(--font-mono);color:var(--accent);text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:160px;" title="${archivo}">📎 ${archivo}</a>` : ''}
+        </div>
+      </div>
+
+      <div style="display:flex;align-items:center;gap:2px;">
+        <input type="text" id="nsrv-vto-dd-${idx}" maxlength="2" placeholder="dd"
+          value="${vto ? vto.split('-')[2] : ''}"
+          oninput="nsrvFechaInput(this,${idx},'dd')"
+          style="width:26px;font-size:11px;font-family:var(--font-mono);background:var(--bg);border:1px solid var(--border);color:var(--text);padding:3px 4px;outline:none;text-align:center;"/>
+        <span style="font-size:11px;color:var(--muted);">/</span>
+        <input type="text" id="nsrv-vto-mm-${idx}" maxlength="2" placeholder="mm"
+          value="${vto ? vto.split('-')[1] : ''}"
+          oninput="nsrvFechaInput(this,${idx},'mm')"
+          style="width:26px;font-size:11px;font-family:var(--font-mono);background:var(--bg);border:1px solid var(--border);color:var(--text);padding:3px 4px;outline:none;text-align:center;"/>
+        <span style="font-size:11px;color:var(--muted);">/</span>
+        <input type="text" id="nsrv-vto-aa-${idx}" maxlength="4" placeholder="aaaa"
+          value="${vto ? vto.split('-')[0] : ''}"
+          oninput="nsrvFechaInput(this,${idx},'aa')"
+          style="width:38px;font-size:11px;font-family:var(--font-mono);background:var(--bg);border:1px solid var(--border);color:var(--text);padding:3px 4px;outline:none;text-align:center;"/>
+        <input type="hidden" id="nsrv-vto-${idx}" value="${vto}"/>
+      </div>
+
+      <div>
+        <select id="nsrv-period-${idx}"
+          style="font-size:11px;font-family:var(--font-mono);background:var(--bg);border:1px solid var(--border);color:var(--text);padding:4px 6px;width:138px;outline:none;appearance:none;">
+          <option value="">— sin periodicidad —</option>
+          <option value="Mensual"   ${period==='Mensual'   ?'selected':''}>Mensual</option>
+          <option value="Trimestral"${period==='Trimestral'?'selected':''}>Trimestral</option>
+          <option value="Semestral" ${period==='Semestral' ?'selected':''}>Semestral</option>
+          <option value="Anual"     ${period==='Anual'     ?'selected':''}>Anual</option>
+          <option value="Única vez" ${period==='Única vez' ?'selected':''}>Única vez</option>
+        </select>
+      </div>
+
+      <div style="display:flex;align-items:center;justify-content:center;">
+        <div id="nsrv-dropzone-${idx}"
+          onclick="document.getElementById('nsrv-file-${idx}').click()"
+          ondragover="event.preventDefault();this.style.opacity='1'"
+          ondragleave="this.style.opacity=this.dataset.hasfile?'1':'0.4'"
+          ondrop="nsrvHandleDrop(event,${idx},'${docId}')"
+          title="${archivo ? archivo : 'Subir o arrastrar archivo'}"
+          data-hasfile="${archivo ? '1' : ''}" style="width:32px;height:32px;display:flex;align-items:center;justify-content:center;cursor:pointer;opacity:${archivo ? '1' : '0.4'};transition:opacity .15s;"
+          onmouseover="this.style.opacity='1'"
+          onmouseout="this.style.opacity=this.dataset.hasfile?'1':'0.4'">
+          ${archivo
+            ? `<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:#6abf6a"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><polyline points="9 12 12 15 15 12"/><line x1="12" y1="15" x2="12" y2="8"/></svg>`
+            : `<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--muted)"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>`
+          }
+        </div>
+        <input type="file" id="nsrv-file-${idx}" style="display:none;"
+          accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+          onchange="nsrvHandleFile(event,${idx},'${docId}')"/>
+      </div>
+
+      <div style="padding-left:10px;padding-right:8px;display:flex;align-items:center;gap:6px;">
+        <input type="text" id="nsrv-nombre-${idx}"
+          placeholder="ningún archivo seleccionado"
+          value="${archivo || ''}"
+          style="flex:1;font-size:11px;font-family:var(--font-mono);background:var(--bg);border:1px solid var(--border);color:${archivo && !vto ? '#e05c5c' : 'var(--text)'};padding:4px 8px;outline:none;box-sizing:border-box;"/>
+        ${link
+          ? `<a href="${link}" target="_blank" title="Abrir archivo"
+              style="flex-shrink:0;display:flex;align-items:center;color:var(--muted);transition:color .15s;"
+              onmouseover="this.style.color='var(--accent)'"
+              onmouseout="this.style.color='var(--muted)'">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                <polyline points="15 3 21 3 21 9"/>
+                <line x1="10" y1="14" x2="21" y2="3"/>
+              </svg>
+            </a>`
+          : `<span style="flex-shrink:0;width:16px;"></span>`
+        }
+      </div>
+
+    </div>`;
+  }).join('');
+
+  // Validar fechas pre-cargadas al renderizar
+  docIds.forEach((docId, idx) => {
+    const dd = document.getElementById('nsrv-vto-dd-' + idx)?.value || '';
+    const mm = document.getElementById('nsrv-vto-mm-' + idx)?.value || '';
+    const aa = document.getElementById('nsrv-vto-aa-' + idx)?.value || '';
+    if (!dd || !mm || aa.length !== 4) return;
+    // Usar UTC para evitar problemas de timezone
+    const fecha = new Date(Date.UTC(parseInt(aa), parseInt(mm) - 1, parseInt(dd)));
+    const esValida = !isNaN(fecha.getTime())
+      && fecha.getUTCFullYear() === parseInt(aa)
+      && fecha.getUTCMonth() + 1 === parseInt(mm)
+      && fecha.getUTCDate()      === parseInt(dd);
+    ['dd','mm','aa'].forEach(function(c) {
+      const inp = document.getElementById('nsrv-vto-' + c + '-' + idx);
+      if (inp) inp.style.color = esValida ? 'var(--text)' : '#e05c5c';
+    });
+  });
+}
+
+function nsrvFechaInput(el, idx, campo) {
+  // Solo números
+  el.value = el.value.replace(/\D/g, '');
+
+  // Limitar rango mientras escribe
+  if (campo === 'dd') {
+    if (el.value.length === 2 && (parseInt(el.value) < 1 || parseInt(el.value) > 31)) {
+      el.style.color = '#e05c5c';
+    } else {
+      el.style.color = 'var(--text)';
+    }
+  }
+  if (campo === 'mm') {
+    if (el.value.length === 2 && (parseInt(el.value) < 1 || parseInt(el.value) > 12)) {
+      el.style.color = '#e05c5c';
+    } else {
+      el.style.color = 'var(--text)';
+    }
+  }
+
+  // Auto-avanzar al siguiente campo cuando se completan los dígitos
+  if (campo === 'dd' && el.value.length === 2) {
+    document.getElementById(`nsrv-vto-mm-${idx}`)?.focus();
+  } else if (campo === 'mm' && el.value.length === 2) {
+    document.getElementById(`nsrv-vto-aa-${idx}`)?.focus();
+  }
+
+  // Armar valor YYYY-MM-DD en el hidden y validar fecha real
+  const dd = document.getElementById(`nsrv-vto-dd-${idx}`)?.value || '';
+  const mm = document.getElementById(`nsrv-vto-mm-${idx}`)?.value || '';
+  const aa = document.getElementById(`nsrv-vto-aa-${idx}`)?.value || '';
+  const hidden = document.getElementById(`nsrv-vto-${idx}`);
+
+  if (aa.length === 4 && mm.length === 2 && dd.length === 2) {
+    const fecha = new Date(Date.UTC(parseInt(aa), parseInt(mm) - 1, parseInt(dd)));
+    const esValida = !isNaN(fecha.getTime())
+      && fecha.getUTCFullYear() === parseInt(aa)
+      && fecha.getUTCMonth() + 1 === parseInt(mm)
+      && fecha.getUTCDate()      === parseInt(dd);
+
+    if (esValida) {
+      hidden.value = `${aa}-${mm}-${dd}`;
+      // Limpiar colores de error
+      ['dd','mm','aa'].forEach(c => {
+        const inp = document.getElementById(`nsrv-vto-${c}-${idx}`);
+        if (inp) inp.style.color = 'var(--text)';
+      });
+    } else {
+      hidden.value = '';
+      // Marcar en rojo los tres campos
+      ['dd','mm','aa'].forEach(c => {
+        const inp = document.getElementById(`nsrv-vto-${c}-${idx}`);
+        if (inp) inp.style.color = '#e05c5c';
+      });
+    }
+  } else {
+    if (hidden) hidden.value = '';
+  }
+
+  nsrvActualizarNombre(idx);
+}
+
+function nsrvValidarAnio(input) {} // compatibilidad
+
+function nsrvSetArchivoUI(idx, nombre) {
+  const dz = document.getElementById(`nsrv-dropzone-${idx}`);
+  if (!dz) return;
+  const svgArchivo = `<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:#6abf6a"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><polyline points="9 12 12 15 15 12"/><line x1="12" y1="15" x2="12" y2="8"/></svg>`;
+  const svgVacio   = `<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--muted)"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>`;
+  dz.innerHTML       = nombre ? svgArchivo : svgVacio;
+  dz.style.opacity   = '1';
+  dz.dataset.hasfile = nombre ? '1' : '';
+  dz.dataset.ext     = nombre && nombre.includes('.') ? '.' + nombre.split('.').pop() : '';
+  dz.title           = nombre || 'Subir o arrastrar archivo';
+  const ni  = document.getElementById(`nsrv-nombre-${idx}`);
+  const vto = document.getElementById(`nsrv-vto-${idx}`)?.value || '';
+  if (ni) {
+    ni.value       = nombre || '';
+    ni.style.color = (nombre && !vto) ? '#e05c5c' : 'var(--text)';
+  }
+}
+
+function nsrvHandleDrop(event, idx, docId) {
+  event.preventDefault();
+  const row = document.getElementById(`nsrv-row-${idx}`);
+  if (row) row.classList.remove('nsrv-drag-over');
+  const file = event.dataTransfer?.files?.[0];
+  if (!file) return;
+  // Simular el mismo flujo que file input
+  const dt = new DataTransfer();
+  dt.items.add(file);
+  const input = document.getElementById(`nsrv-file-${idx}`);
+  if (input) {
+    input.files = dt.files;
+    nsrvHandleFile({ target: input }, idx, docId);
+  }
+}
+
+function nsrvSubirArchivo(idx, docId) {
+  document.getElementById(`nsrv-file-${idx}`).click();
+}
+
+async function nsrvHandleFile(event, idx, docId) {
+  const file = event.target.files[0];
+  if (!file) return;
+  nsrvSetArchivoUI(idx, file.name);
+
+  const btn = document.getElementById(`nsrv-btn-upload-${idx}`);
+  const origText = btn ? btn.textContent : '';
+  if (btn) { btn.innerHTML = '<span class="spinner dark"></span>'; btn.disabled = true; }
+
+  try {
+    const base64 = await fileToBase64(file);
+    const { obraId, srvId, proveedor } = nuevoSrvState;
+    if (!obraId || !srvId || !proveedor) throw new Error('Completá empresa, obra, proveedor y tipo de servicio antes de subir archivos.');
+
+    // Primero necesitamos que el registro exista
+    // Si no existe, crear registro primero
+    const existente = DOCUMENTACION.find(d =>
+      d.Obra_ID === obraId && d.Servicio_ID === srvId &&
+      d.Proveedor === proveedor && d.Doc_ID === docId
+    );
+
+    // Verificar también en el sheet (no solo en cache local)
+    const yaExisteEnSheet = DOCUMENTACION.some(d =>
+      d.Obra_ID === obraId && d.Servicio_ID === srvId && d.Proveedor === proveedor
+    );
+    if (!yaExisteEnSheet && !nsrvCreandoRegistros) {
+      nsrvCreandoRegistros = true;
+      try {
+        await gasPost({
+          accion: 'crearRegistrosDoc',
+          data: {
+            UN:          nuevoSrvState.empresa || getUNDeObra(obraId),
+            Proveedor:   proveedor,
+            Obra_ID:     obraId,
+            Servicio_ID: srvId,
+          }
+        });
+        DOCUMENTACION = await gasPost({ accion: 'getDocumentacion' });
+      } finally {
+        nsrvCreandoRegistros = false;
+      }
+    } else if (nsrvCreandoRegistros) {
+      // Esperar a que el otro termine
+      await new Promise(r => setTimeout(r, 2000));
+      DOCUMENTACION = await gasPost({ accion: 'getDocumentacion' });
+    }
+
+    const vto    = document.getElementById(`nsrv-vto-${idx}`)?.value || '';
+    const docObj = DOCUMENTOS_CAT.find(d => d.Doc_ID === docId) || {};
+    const ext    = file.name.includes('.') ? '.' + file.name.split('.').pop() : '';
+    const perfil = currentUser?.perfil || 'admin';
+    const estado = perfil === 'proveedor' ? 'Pendiente' : 'Aprobado';
+
+    if (!base64 || base64.length < 10) throw new Error('El archivo no se pudo leer correctamente.');
+
+    const result = await gasPost({
+      accion: 'subirArchivo',
+      data: {
+        Obra_ID:       obraId,
+        Servicio_ID:   srvId,
+        Proveedor:     proveedor,
+        Doc_ID:        docId,
+        UN:            nuevoSrvState.empresa || getUNDeObra(obraId),
+        nombreArchivo: nsrvNombreArchivo(vto, docObj.Doc_Nombre || docId) + ext,
+        mimeType:      file.type || 'application/octet-stream',
+        base64:        base64,
+        Doc_Vto:       vto,
+        Doc_Estado:    estado,
+      }
+    });
+
+    if (!result?.link) throw new Error('El archivo se procesó pero no se obtuvo el link. Verificá permisos del Drive.');
+    // Actualizar DOCUMENTACION en background sin re-renderizar toda la lista
+    gasPost({ accion: 'getDocumentacion' }).then(docs => { DOCUMENTACION = docs; }).catch(() => {});
+    showToast(`✓ "${file.name}" subido correctamente.`);
+  } catch(e) {
+    showToast('Error al subir: ' + e.message, 'error');
+    if (btn) { btn.textContent = origText; btn.disabled = false; }
+  }
+}
+
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload  = () => resolve(reader.result.split(',')[1]);
+    reader.onerror = () => reject(new Error('No se pudo leer el archivo'));
+    reader.readAsDataURL(file);
+  });
+}
+
+function getUNDeObra(obraId) {
+  // Buscar en Bejerman primero, luego en OBRAS
+  const fuente = obrasVisibles();
+  const obra   = fuente.find(o => (o.Obra_ID || o.id || o.Codigo) === obraId);
+  return obra?.UN || obra?.empresa || '';
+}
+
+function nsrvActualizarNombre(idx) {
+  const ni  = document.getElementById(`nsrv-nombre-${idx}`);
+  const dz  = document.getElementById(`nsrv-dropzone-${idx}`);
+  if (!ni || !dz?.dataset.hasfile) return;
+  const vto = document.getElementById(`nsrv-vto-${idx}`)?.value || '';
+  ni.style.color = vto ? 'var(--text)' : '#e05c5c';
+}
+
+async function guardarNuevoServicio() {
+  const { obraId, srvId, proveedor } = nuevoSrvState;
+  if (!obraId || !srvId || !proveedor) {
+    showToast('Completá todos los campos de selección.', 'error');
+    return;
+  }
+
+  const btn = document.getElementById('btn-guardar-nsrv');
+
+  // Validaciones antes de guardar
+  const matrizRowCheck = (MATRIZ.rows || []).find(r => r.Servicio_ID === nuevoSrvState.srvId);
+  const docIdsCheck = matrizRowCheck ? matrizRowCheck.docs : [];
+
+  // Verificar que al menos un doc tenga archivo
+  const hayArchivo = docIdsCheck.some((docId, idx) => {
+    const dz = document.getElementById(`nsrv-dropzone-${idx}`);
+    return !!dz?.dataset.hasfile;
+  });
+  if (!hayArchivo) {
+    showToast('Cargá al menos un archivo antes de guardar.', 'error');
+    return;
+  }
+
+  // Verificar fechas: archivo sin fecha o fecha inválida
+  const errores = [];
+  docIdsCheck.forEach((docId, idx) => {
+    const dz  = document.getElementById(`nsrv-dropzone-${idx}`);
+    if (!dz?.dataset.hasfile) return; // sin archivo, no valida
+    const vto = document.getElementById(`nsrv-vto-${idx}`)?.value || '';
+    const dd  = document.getElementById(`nsrv-vto-dd-${idx}`)?.value || '';
+    const mm  = document.getElementById(`nsrv-vto-mm-${idx}`)?.value || '';
+    const aa  = document.getElementById(`nsrv-vto-aa-${idx}`)?.value || '';
+    const doc = DOCUMENTOS_CAT.find(d => d.Doc_ID === docId);
+    const nombre = doc?.Doc_Nombre || docId;
+    if (!dd || !mm || !aa) {
+      errores.push(`"${nombre}": falta fecha de vencimiento`);
+    } else if (!vto) {
+      errores.push(`"${nombre}": fecha inválida`);
+    }
+  });
+  if (errores.length) {
+    showToast(errores[0], 'error');
+    return;
+  }
+
+  setLoading(btn, true);
+
+  try {
+    // Verificar si ya existen registros
+    const existentes = DOCUMENTACION.filter(d =>
+      d.Obra_ID === obraId && d.Servicio_ID === srvId && d.Proveedor === proveedor
+    );
+
+    if (!existentes.length) {
+      await gasPost({
+        accion: 'crearRegistrosDoc',
+        data: {
+          UN:          nuevoSrvState.empresa || getUNDeObra(obraId),
+          Proveedor:   proveedor,
+          Obra_ID:     obraId,
+          Servicio_ID: srvId,
+        }
+      });
+    }
+
+    // Guardar vto y periodicidad para cada doc que tenga esos datos
+    const matrizRow = (MATRIZ.rows || []).find(r => r.Servicio_ID === srvId);
+    const docIds    = matrizRow ? matrizRow.docs : [];
+
+    const perfil = currentUser?.perfil || 'admin';
+    const promesas = docIds.map((docId, idx) => {
+      const vto    = document.getElementById(`nsrv-vto-${idx}`)?.value || '';
+      const period = document.getElementById(`nsrv-period-${idx}`)?.value || '';
+      const dz     = document.getElementById(`nsrv-dropzone-${idx}`);
+      const tieneArchivo = !!dz?.dataset.hasfile;
+
+      // Estado: Aprobado si tiene archivo y no es proveedor, Pendiente si tiene archivo y es proveedor, Faltante si no tiene archivo
+      const estado = tieneArchivo
+        ? (perfil === 'proveedor' ? 'Pendiente' : 'Aprobado')
+        : 'Faltante';
+
+      const promesasDoc = [
+        gasPost({
+          accion: 'actualizarVtoPeriodo',
+          data: { Obra_ID: obraId, Servicio_ID: srvId, Proveedor: proveedor, Doc_ID: docId, Doc_Vto: vto, Doc_Periodicidad: period, Doc_Estado: estado }
+        }).catch(() => {})
+      ];
+
+      // Si tiene archivo, renombrar con la fecha definitiva
+      if (tieneArchivo) {
+        const doc     = DOCUMENTOS_CAT.find(d => d.Doc_ID === docId) || {};
+        const dzEl    = document.getElementById(`nsrv-dropzone-${idx}`);
+        const ext     = (dzEl?.dataset.ext || '');
+        const nuevoNombre = nsrvNombreArchivo(vto, doc.Doc_Nombre || docId) + ext;
+        promesasDoc.push(
+          gasPost({
+            accion: 'renombrarArchivo',
+            data: { Obra_ID: obraId, Servicio_ID: srvId, Proveedor: proveedor, Doc_ID: docId, nuevoNombre }
+          }).catch(() => {})
+        );
+      }
+
+      return Promise.all(promesasDoc);
+    });
+
+    await Promise.all(promesas);
+    DOCUMENTACION = await gasPost({ accion: 'getDocumentacion' });
+    renderObras();
+    renderDashboard();
+    showToast('✓ Servicio guardado correctamente.');
+    renderNsrvDocs();
+  } catch(e) {
+    showToast('Error al guardar: ' + e.message, 'error');
+  } finally {
+    setLoading(btn, false);
+  }
+}
+
 </script>
 </body>
 </html>
