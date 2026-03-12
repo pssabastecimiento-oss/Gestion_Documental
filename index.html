@@ -604,8 +604,8 @@
 
   /* Servicios cards */
   .servicios-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    display: flex;
+    flex-direction: column;
     gap: 16px;
   }
   .servicio-card {
@@ -1150,7 +1150,7 @@
       <div class="view" id="view-nuevo-servicio">
         <div class="page-header">
           <div>
-            <button class="back-btn" onclick="showView('obras')" style="margin-bottom:4px;">← Volver a Obras</button>
+            <button class="back-btn" onclick="volverDesdeNsrv()" style="margin-bottom:4px;">← Volver</button>
             <div class="page-title" id="nsrv-titulo">Nuevo Servicio</div>
             <div class="page-subtitle" id="nsrv-subtitulo">// Registrá un nuevo servicio para una obra</div>
           </div>
@@ -1334,7 +1334,7 @@
           <div style="display:flex;align-items:center;gap:12px;">
             <div id="detalle-badge"></div>
             <div id="detalle-actions">
-              <button class="btn-sm primary" onclick="openModal('modal-nuevo-servicio')">+ Nuevo Servicio</button>
+              <button class="btn-sm primary" onclick="abrirNuevoServicio()">+ Nuevo Servicio</button>
             </div>
           </div>
         </div>
@@ -2166,11 +2166,18 @@ function renderServicios(servicios) {
           <div class="servicio-nombre">${srvNombre}</div>
           <div class="servicio-proveedor">⬡ ${srv.Proveedor}</div>
         </div>
-        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
-          ${stats.rechazado ? `<span class="badge badge-red">⚠ ${stats.rechazado} rechazado${stats.rechazado>1?'s':''}</span>` : ''}
-          ${stats.pendiente ? `<span class="badge badge-amber">${stats.pendiente} para revisar</span>` : ''}
-          ${stats.faltante  ? `<span class="badge badge-gray">${stats.faltante} faltante${stats.faltante>1?'s':''}</span>` : ''}
-          ${!stats.rechazado && !stats.pendiente && !stats.faltante ? `<span class="badge badge-green">Completo</span>` : ''}
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
+          <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end;">
+            ${stats.rechazado ? `<span class="badge badge-red">⚠ ${stats.rechazado} rechazado${stats.rechazado>1?'s':''}</span>` : ''}
+            ${stats.pendiente ? `<span class="badge badge-amber">${stats.pendiente} para revisar</span>` : ''}
+            ${stats.faltante  ? `<span class="badge badge-gray">${stats.faltante} faltante${stats.faltante>1?'s':''}</span>` : ''}
+            ${!stats.rechazado && !stats.pendiente && !stats.faltante ? `<span class="badge badge-green">Completo</span>` : ''}
+          </div>
+          <button class="btn-sm" style="font-size:10px;padding:4px 12px;display:flex;align-items:center;gap:5px;"
+            onclick="editarServicio('${srv.Obra_ID}','${srv.Servicio_ID}','${srv.Proveedor}','${srv.UN}',event)">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            Editar / Cargar faltantes
+          </button>
         </div>
       </div>
       <div class="servicio-card-body">
@@ -2182,8 +2189,87 @@ function renderServicios(servicios) {
 
 
 // ═══════════════════════════════════════════════════════════
-// 10 - ACCIONES DOCUMENTOS
+// 10b - EDITAR SERVICIO EXISTENTE (cargar faltantes)
 // ═══════════════════════════════════════════════════════════
+async function editarServicio(obraId, srvId, proveedor, un, e) {
+  if (e) e.stopPropagation();
+
+  // Buscar la obra para obtener el nombre
+  const obra = obrasVisibles().find(o => o.Obra_ID === obraId);
+  const obraNombre = obra ? obra.Nombre : obraId;
+  const empresa    = obra ? (obra.UN || un) : un;
+
+  // Cambiar título de la vista
+  document.getElementById('nsrv-titulo').textContent    = 'Editar Servicio';
+  document.getElementById('nsrv-subtitulo').textContent = `// ${getNombreServicio(srvId)} — ${proveedor} — ${obraNombre}`;
+
+  // Pre-cargar estado del selector (todos los campos que usa renderNsrvDocs)
+  nuevoSrvState = { obraId, srvId, proveedor, empresa };
+
+  // Pre-cargar los campos del formulario (texto visible + hidden)
+  document.getElementById('nsrv-empresa').value         = empresa;
+  document.getElementById('nsrv-obra-input').value      = obraNombre;
+  document.getElementById('nsrv-obra').value            = obraId;
+  document.getElementById('nsrv-proveedor-input').value = proveedor;
+  document.getElementById('nsrv-proveedor').value       = proveedor;
+
+  const srvObj = SERVICIOS_CAT.find(s => s.Servicio_ID === srvId);
+  document.getElementById('nsrv-servicio-input').value  = srvObj ? srvObj.Servicio_Nombre : srvId;
+  document.getElementById('nsrv-servicio').value        = srvId;
+
+  // Bloquear los selectores para que no se puedan cambiar (es edición, no nuevo)
+  ['nsrv-empresa','nsrv-obra-input','nsrv-proveedor-input','nsrv-servicio-input'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) { el.disabled = true; el.style.opacity = '.6'; el.style.cursor = 'not-allowed'; }
+  });
+
+  // Mostrar el panel de docs
+  document.getElementById('nsrv-docs-wrap').style.display = '';
+  document.getElementById('nsrv-empty').style.display      = 'none';
+
+  showView('nuevo-servicio');
+
+  // Renderizar docs con datos ya existentes pre-cargados
+  renderNsrvDocs();
+}
+
+function volverDesdeNsrv() {
+  // Desbloquear campos por si veníamos de edición
+  ['nsrv-empresa','nsrv-obra-input','nsrv-proveedor-input','nsrv-servicio-input'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) { el.disabled = false; el.style.opacity = ''; el.style.cursor = ''; }
+  });
+  // Si veníamos de un detalle de obra, volver al detalle
+  if (currentObraId) {
+    openObra(currentObraId);
+  } else {
+    showView('obras');
+  }
+}
+
+// Resetear bloqueo de campos al abrir un Nuevo Servicio normal
+function abrirNuevoServicio() {
+  document.getElementById('nsrv-titulo').textContent    = 'Nuevo Servicio';
+  document.getElementById('nsrv-subtitulo').textContent = '// Registrá un nuevo servicio para una obra';
+  nuevoSrvState = {};
+  // Limpiar y desbloquear campos
+  ['nsrv-empresa','nsrv-obra-input','nsrv-proveedor-input','nsrv-servicio-input'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.disabled = false;
+      el.style.opacity = '';
+      el.style.cursor  = '';
+      el.value = '';
+    }
+  });
+  ['nsrv-obra','nsrv-proveedor','nsrv-servicio'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  document.getElementById('nsrv-docs-wrap').style.display  = 'none';
+  document.getElementById('nsrv-empty').style.display      = '';
+  showView('nuevo-servicio');
+}
 async function cambiarEstadoDoc(obraId, servicioId, docId, proveedor, nuevoEstado, e) {
   e.stopPropagation();
   const btn = e.target;
