@@ -15,7 +15,7 @@
     --accent2:   #f59e0b;
     --danger:    #ef4444;
     --success:   #22c55e;
-    --warning:   #f59e0b;
+    --warning:   #d97706;
     --text:      #e8eaf0;
     --muted:     #6b7a99;
     --font-sans: 'Nunito Sans', sans-serif;
@@ -366,14 +366,14 @@
   /* Stats row */
   .stats-row {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(3, 1fr);
     gap: 16px;
     margin-bottom: 28px;
   }
   .stat-card {
     background: var(--surface);
     border: 1px solid var(--border);
-    padding: 18px 20px;
+    padding: 12px 16px;
     position: relative;
     overflow: hidden;
   }
@@ -396,7 +396,7 @@
     margin-bottom: 8px;
   }
   .stat-value {
-    font-size: 32px;
+    font-size: 26px;
     font-family: var(--font-mono);
     font-weight: 600;
     line-height: 1;
@@ -604,8 +604,8 @@
 
   /* Servicios cards */
   .servicios-grid {
-    display: flex;
-    flex-direction: column;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
     gap: 16px;
   }
   .servicio-card {
@@ -963,7 +963,7 @@
   #nsrv-doc-list .nsrv-doc-row { transition: background .1s; }
   /* ── RESPONSIVE adjustments ───────────────────────────── */
   @media (max-width: 900px) {
-    .stats-row { grid-template-columns: repeat(2,1fr); }
+    .stats-row { grid-template-columns: repeat(3,1fr); }
     .config-grid { grid-template-columns: 1fr; }
     .sidebar { width: 180px; }
   }
@@ -1078,16 +1078,12 @@
         <div class="view-body">
           <div class="stats-row" id="stats-row">
             <div class="stat-card blue">
-              <div class="stat-label">Obras activas</div>
+              <div class="stat-label">Obras registradas</div>
               <div class="stat-value" id="stat-obras">0</div>
             </div>
             <div class="stat-card amber">
               <div class="stat-label">Docs pendientes</div>
               <div class="stat-value" id="stat-pendientes">0</div>
-            </div>
-            <div class="stat-card green">
-              <div class="stat-label">Docs aprobados</div>
-              <div class="stat-value" id="stat-aprobados">0</div>
             </div>
             <div class="stat-card red">
               <div class="stat-label">Rechazados</div>
@@ -1101,9 +1097,9 @@
             <table>
               <thead>
                 <tr>
-                  <th>Obra</th>
                   <th>Empresa</th>
-                  <th>Servicios</th>
+                  <th>Obra</th>
+                  <th>Servicio</th>
                   <th>Estado Docs</th>
                   <th>Estado</th>
                 </tr>
@@ -1659,6 +1655,7 @@ let OBRAS_BEJERMAN       = [];
 let PROVEEDORES          = [];
 let nuevoSrvState        = { obraId: null, srvId: null, proveedor: null, docs: [] };
 let nsrvCreandoRegistros = false; // flag para evitar crearRegistrosDoc simultáneo
+let nsrvFilesCache       = {};    // { docId: { file, base64 } } — archivos en memoria hasta Guardar
 let configServicioActivo = null;
 let filtroDocCat = 'todos';
 let selectedFileForUpload = null;
@@ -1876,6 +1873,27 @@ function showView(id) {
     showToast('No tenés permiso para acceder a esta sección.', 'error');
     return;
   }
+
+  // Si salimos de nuevo-servicio hacia cualquier vista que no sea nuevo-servicio, limpiar estado
+  const vistaActiva = document.querySelector('.view.active');
+  if (vistaActiva?.id === 'view-nuevo-servicio' && id !== 'nuevo-servicio') {
+    nuevoSrvState  = {};
+    nsrvFilesCache = {};
+    // Desbloquear campos por si veníamos de edición
+    ['nsrv-empresa','nsrv-obra-input','nsrv-proveedor-input','nsrv-servicio-input'].forEach(elId => {
+      const el = document.getElementById(elId);
+      if (el) { el.disabled = false; el.style.opacity = ''; el.style.cursor = ''; el.value = ''; }
+    });
+    ['nsrv-obra','nsrv-proveedor','nsrv-servicio'].forEach(elId => {
+      const el = document.getElementById(elId);
+      if (el) el.value = '';
+    });
+    document.getElementById('nsrv-docs-wrap').style.display = 'none';
+    document.getElementById('nsrv-empty').style.display     = '';
+    const docsContainer = document.getElementById('nsrv-docs-list');
+    if (docsContainer) docsContainer.innerHTML = '';
+  }
+
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   const el  = document.getElementById('view-' + id);
@@ -1934,16 +1952,14 @@ function docEstadoBadge(est) {
 // ═══════════════════════════════════════════════════════════
 function renderDashboard() {
   const obras = obrasVisibles();
-  let totalPend = 0, totalAprov = 0, totalRech = 0;
+  let totalPend = 0, totalRech = 0;
   obras.forEach(o => {
     const s = getDocsStats(o.Obra_ID);
-    totalPend  += s.pendientes + s.cargados;
-    totalAprov += s.aprobados;
-    totalRech  += s.rechazados;
+    totalPend += s.pendientes + s.cargados;
+    totalRech += s.rechazados;
   });
-  document.getElementById('stat-obras').textContent      = obras.filter(o => o.Estado === 'Activa').length;
+  document.getElementById('stat-obras').textContent      = obras.length;
   document.getElementById('stat-pendientes').textContent  = totalPend;
-  document.getElementById('stat-aprobados').textContent   = totalAprov;
   document.getElementById('stat-rechazados').textContent  = totalRech;
 
   const tbody = document.getElementById('dash-table-body');
@@ -1952,14 +1968,17 @@ function renderDashboard() {
     return;
   }
   tbody.innerHTML = obras.map(o => {
-    const s   = getDocsStats(o.Obra_ID);
-    const pct = s.total > 0 ? Math.round((s.aprobados / s.total) * 100) : 0;
-    const fillCls  = pct === 100 ? 'ok' : pct > 60 ? '' : 'warn';
-    const srvCount = getServiciosPorObra(o.Obra_ID).length;
+    const s      = getDocsStats(o.Obra_ID);
+    const pct    = s.total > 0 ? Math.round((s.aprobados / s.total) * 100) : 0;
+    const fillCls = pct === 100 ? 'ok' : pct > 60 ? '' : 'warn';
+    const servicios = getServiciosPorObra(o.Obra_ID);
+    const srvNombre = servicios.length
+      ? servicios.map(srv => getNombreServicio(srv.Servicio_ID)).join(', ')
+      : '—';
     return `<tr onclick="openObra('${o.Obra_ID}')">
-      <td><strong>${o.Nombre}</strong></td>
       <td><span class="empresa-tag">${o.UN}</span></td>
-      <td><span style="font-family:var(--font-mono)">${srvCount}</span></td>
+      <td><strong>${o.Nombre}</strong></td>
+      <td style="font-size:12px;color:var(--muted)">${srvNombre}</td>
       <td>
         <div class="doc-progress">
           <div class="progress-bar"><div class="progress-fill ${fillCls}" style="width:${pct}%"></div></div>
@@ -2086,16 +2105,12 @@ async function openObra(id) {
   document.getElementById('detalle-badge').innerHTML    = estadoBadge(obra.Estado);
   document.getElementById('detalle-meta').innerHTML = `
     <div class="obra-meta-item">
-      <span class="obra-meta-label">Código</span>
+      <span class="obra-meta-label">Obra</span>
       <span class="obra-meta-value" style="font-family:var(--font-mono)">${obra.Obra_ID}</span>
     </div>
     <div class="obra-meta-item">
       <span class="obra-meta-label">UN</span>
       <span class="obra-meta-value">${obra.UN}</span>
-    </div>
-    <div class="obra-meta-item">
-      <span class="obra-meta-label">Servicios</span>
-      <span class="obra-meta-value" style="font-family:var(--font-mono)" id="detalle-srv-count">—</span>
     </div>`;
 
   document.getElementById('detalle-actions').style.display = currentUser.perfil === 'editor' ? '' : 'none';
@@ -2108,11 +2123,25 @@ async function openObra(id) {
     // Actualizar DOCUMENTACION local con los docs de esta obra
     DOCUMENTACION = DOCUMENTACION.filter(d => d.Obra_ID !== id).concat(docs || []);
     const servicios = getServiciosPorObra(id);
-    document.getElementById('detalle-srv-count').textContent = servicios.length;
+    
     renderServicios(servicios);
   } catch(e) {
     showToast('Error cargando servicios: ' + e.message, 'error');
   }
+}
+
+function vtoColor(vtoStr) {
+  if (!vtoStr) return null;
+  const hoy    = new Date(); hoy.setHours(0,0,0,0);
+  const partes = String(vtoStr).trim().split('-');
+  if (partes.length !== 3) return null;
+  const vto = new Date(Date.UTC(+partes[0], +partes[1]-1, +partes[2]));
+  if (isNaN(vto)) return null;
+  const dias = Math.round((vto - hoy) / 86400000);
+  const label = `${String(partes[2]).padStart(2,'0')}/${String(partes[1]).padStart(2,'0')}/${partes[0]}`;
+  if (dias < 0)   return { color: 'var(--danger)',  label };
+  if (dias <= 30) return { color: 'var(--warning)', label };
+  return              { color: 'var(--success)',  label };
 }
 
 function renderServicios(servicios) {
@@ -2130,7 +2159,7 @@ function renderServicios(servicios) {
 
   grid.innerHTML = servicios.map(srv => {
     const srvNombre = getNombreServicio(srv.Servicio_ID);
-    const docItems  = srv.docs.map(doc => {
+    const docItems  = [...srv.docs].sort((a,b) => (a.Doc_Nombre||'').localeCompare(b.Doc_Nombre||'','es')).map(doc => {
       const est = (doc.Doc_Estado || 'pendiente').toLowerCase();
       let actions = '';
       if (isEditor && est === 'pendiente') {
@@ -2146,9 +2175,14 @@ function renderServicios(servicios) {
       } else if (doc.Doc_LinkArchivo) {
         actions = `<a href="${doc.Doc_LinkArchivo}" target="_blank" style="font-size:10px;font-family:var(--font-mono);color:var(--accent)">Ver →</a>`;
       }
+      const vtoInfo = (doc.Doc_LinkArchivo && est !== 'faltante') ? vtoColor(doc.Doc_Vto) : null;
+      const vtoHtml = vtoInfo
+        ? `<span style="font-size:10px;font-family:var(--font-mono);color:${vtoInfo.color};white-space:nowrap;">${vtoInfo.label}</span>`
+        : '';
       return `<li class="doc-item">
         <span class="doc-name">${doc.Doc_Nombre}</span>
         <div style="display:flex;align-items:center;gap:8px">
+          ${vtoHtml}
           ${docEstadoBadge(est)}
           ${actions}
         </div>
@@ -2198,16 +2232,17 @@ async function editarServicio(obraId, srvId, proveedor, un, e) {
   const obra = obrasVisibles().find(o => o.Obra_ID === obraId);
   const obraNombre = obra ? obra.Nombre : obraId;
   const empresa    = obra ? (obra.UN || un) : un;
+  const empresaUP  = (empresa || '').toUpperCase();
 
   // Cambiar título de la vista
   document.getElementById('nsrv-titulo').textContent    = 'Editar Servicio';
   document.getElementById('nsrv-subtitulo').textContent = `// ${getNombreServicio(srvId)} — ${proveedor} — ${obraNombre}`;
 
   // Pre-cargar estado del selector (todos los campos que usa renderNsrvDocs)
-  nuevoSrvState = { obraId, srvId, proveedor, empresa };
+  nuevoSrvState = { obraId, srvId, proveedor, empresa: empresaUP };
 
   // Pre-cargar los campos del formulario (texto visible + hidden)
-  document.getElementById('nsrv-empresa').value         = empresa;
+  document.getElementById('nsrv-empresa').value         = empresaUP;
   document.getElementById('nsrv-obra-input').value      = obraNombre;
   document.getElementById('nsrv-obra').value            = obraId;
   document.getElementById('nsrv-proveedor-input').value = proveedor;
@@ -2251,23 +2286,22 @@ function volverDesdeNsrv() {
 function abrirNuevoServicio() {
   document.getElementById('nsrv-titulo').textContent    = 'Nuevo Servicio';
   document.getElementById('nsrv-subtitulo').textContent = '// Registrá un nuevo servicio para una obra';
-  nuevoSrvState = {};
-  // Limpiar y desbloquear campos
+  nuevoSrvState  = {};
+  nsrvFilesCache = {};
+  // Limpiar y desbloquear todos los campos
   ['nsrv-empresa','nsrv-obra-input','nsrv-proveedor-input','nsrv-servicio-input'].forEach(id => {
     const el = document.getElementById(id);
-    if (el) {
-      el.disabled = false;
-      el.style.opacity = '';
-      el.style.cursor  = '';
-      el.value = '';
-    }
+    if (el) { el.disabled = false; el.style.opacity = ''; el.style.cursor = ''; el.value = ''; }
   });
   ['nsrv-obra','nsrv-proveedor','nsrv-servicio'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = '';
   });
-  document.getElementById('nsrv-docs-wrap').style.display  = 'none';
-  document.getElementById('nsrv-empty').style.display      = '';
+  // Limpiar panel de docs
+  document.getElementById('nsrv-docs-wrap').style.display = 'none';
+  document.getElementById('nsrv-empty').style.display     = '';
+  const docsContainer = document.getElementById('nsrv-docs-list');
+  if (docsContainer) docsContainer.innerHTML = '';
   showView('nuevo-servicio');
 }
 async function cambiarEstadoDoc(obraId, servicioId, docId, proveedor, nuevoEstado, e) {
@@ -2435,7 +2469,7 @@ async function crearServicio() {
     const docs = await gasPost({ accion: 'getDocumentacion', filtros: { Obra_ID: currentObraId } });
     DOCUMENTACION = DOCUMENTACION.filter(d => d.Obra_ID !== currentObraId).concat(docs || []);
     const servicios = getServiciosPorObra(currentObraId);
-    document.getElementById('detalle-srv-count').textContent = servicios.length;
+    
     renderServicios(servicios);
     renderDashboard();
     closeModal('modal-nuevo-servicio');
@@ -3055,7 +3089,7 @@ document.querySelectorAll('.modal-overlay').forEach(overlay => {
 // ═══════════════════════════════════════════════════════════
 
 function abrirNuevoServicio(obraId, srvId, proveedor) {
-  // Reset estado
+  nsrvFilesCache = {};
   nuevoSrvState = { obraId: obraId || null, srvId: srvId || null, proveedor: proveedor || null, empresa: null, docs: [], modoEdicion: !!(obraId && srvId && proveedor) };
 
   // Título según modo
@@ -3588,83 +3622,34 @@ function nsrvSubirArchivo(idx, docId) {
 async function nsrvHandleFile(event, idx, docId) {
   const file = event.target.files[0];
   if (!file) return;
-  nsrvSetArchivoUI(idx, file.name);
 
-  const btn = document.getElementById(`nsrv-btn-upload-${idx}`);
-  const origText = btn ? btn.textContent : '';
-  if (btn) { btn.innerHTML = '<span class="spinner dark"></span>'; btn.disabled = true; }
+  // Validar tamaño
+  if (file.size > 15 * 1024 * 1024) {
+    showToast('El archivo supera los 15MB. Comprimilo antes de subir.', 'error');
+    return;
+  }
 
+  // Solo guardar en memoria — NO subir todavía
   try {
     const base64 = await fileToBase64(file);
-    const { obraId, srvId, proveedor } = nuevoSrvState;
-    if (!obraId || !srvId || !proveedor) throw new Error('Completá empresa, obra, proveedor y tipo de servicio antes de subir archivos.');
+    nsrvFilesCache[docId] = { file, base64 };
+    nsrvSetArchivoUI(idx, file.name);
 
-    // Primero necesitamos que el registro exista
-    // Si no existe, crear registro primero
-    const existente = DOCUMENTACION.find(d =>
-      d.Obra_ID === obraId && d.Servicio_ID === srvId &&
-      d.Proveedor === proveedor && d.Doc_ID === docId
-    );
-
-    // Verificar también en el sheet (no solo en cache local)
-    const yaExisteEnSheet = DOCUMENTACION.some(d =>
-      d.Obra_ID === obraId && d.Servicio_ID === srvId && d.Proveedor === proveedor
-    );
-    if (!yaExisteEnSheet && !nsrvCreandoRegistros) {
-      nsrvCreandoRegistros = true;
-      try {
-        await gasPost({
-          accion: 'crearRegistrosDoc',
-          data: {
-            UN:          nuevoSrvState.empresa || getUNDeObra(obraId),
-            Proveedor:   proveedor,
-            Obra_ID:     obraId,
-            Servicio_ID: srvId,
-          }
-        });
-        DOCUMENTACION = await gasPost({ accion: 'getDocumentacion' });
-      } finally {
-        nsrvCreandoRegistros = false;
-      }
-    } else if (nsrvCreandoRegistros) {
-      // Esperar a que el otro termine
-      await new Promise(r => setTimeout(r, 2000));
-      DOCUMENTACION = await gasPost({ accion: 'getDocumentacion' });
+    // Actualizar dropzone: ícono naranja = pendiente de guardar
+    const dz = document.getElementById(`nsrv-dropzone-${idx}`);
+    if (dz) {
+      dz.dataset.hasfile = '1';
+      dz.dataset.ext     = file.name.includes('.') ? '.' + file.name.split('.').pop() : '';
+      dz.dataset.pending = '1';
+      dz.title           = file.name;
+      dz.style.opacity   = '1';
+      dz.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--warning)"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><polyline points="9 12 12 15 15 12"/><line x1="12" y1="15" x2="12" y2="8"/></svg>`;
     }
-
-    const vto    = document.getElementById(`nsrv-vto-${idx}`)?.value || '';
-    const docObj = DOCUMENTOS_CAT.find(d => d.Doc_ID === docId) || {};
-    const ext    = file.name.includes('.') ? '.' + file.name.split('.').pop() : '';
-    const perfil = currentUser?.perfil || 'admin';
-    const estado = perfil === 'proveedor' ? 'Pendiente' : 'Aprobado';
-
-    if (!base64 || base64.length < 10) throw new Error('El archivo no se pudo leer correctamente.');
-
-    const result = await gasPost({
-      accion: 'subirArchivo',
-      data: {
-        Obra_ID:       obraId,
-        Servicio_ID:   srvId,
-        Proveedor:     proveedor,
-        Doc_ID:        docId,
-        UN:            nuevoSrvState.empresa || getUNDeObra(obraId),
-        nombreArchivo: nsrvNombreArchivo(vto, docObj.Doc_Nombre || docId) + ext,
-        mimeType:      file.type || 'application/octet-stream',
-        base64:        base64,
-        Doc_Vto:       vto,
-        Doc_Estado:    estado,
-      }
-    });
-
-    if (!result?.link) throw new Error('El archivo se procesó pero no se obtuvo el link. Verificá permisos del Drive.');
-    // Actualizar DOCUMENTACION en background sin re-renderizar toda la lista
-    gasPost({ accion: 'getDocumentacion' }).then(docs => { DOCUMENTACION = docs; }).catch(() => {});
-    showToast(`✓ "${file.name}" subido correctamente.`);
   } catch(e) {
-    showToast('Error al subir: ' + e.message, 'error');
-    if (btn) { btn.textContent = origText; btn.disabled = false; }
+    showToast('No se pudo leer el archivo: ' + e.message, 'error');
   }
 }
+
 
 function fileToBase64(file) {
   return new Promise((resolve, reject) => {
@@ -3699,31 +3684,41 @@ async function guardarNuevoServicio() {
 
   const btn = document.getElementById('btn-guardar-nsrv');
 
-  // Validaciones antes de guardar
-  const matrizRowCheck = (MATRIZ.rows || []).find(r => r.Servicio_ID === nuevoSrvState.srvId);
-  const docIdsCheck = matrizRowCheck ? matrizRowCheck.docs : [];
+  const matrizRow = (MATRIZ.rows || []).find(r => r.Servicio_ID === srvId);
+  const allDocIds = matrizRow ? matrizRow.docs : [];
 
-  // Verificar que al menos un doc tenga archivo
-  const hayArchivo = docIdsCheck.some((docId, idx) => {
-    const dz = document.getElementById(`nsrv-dropzone-${idx}`);
-    return !!dz?.dataset.hasfile;
+  // Filtrar por perfil (igual que renderNsrvDocs)
+  const perfil = currentUser?.perfil || 'admin';
+  const docMap = {};
+  DOCUMENTOS_CAT.forEach(d => { docMap[d.Doc_ID] = d; });
+  const docIds = allDocIds.filter(docId => {
+    const cat = docMap[docId]?.Doc_Cat || 'Otros';
+    if (perfil === 'finanzas') return cat === 'Finanzas' || cat === 'Finanzas y Otros';
+    if (perfil === 'obras')    return cat === 'Otros'    || cat === 'Finanzas y Otros';
+    return true;
   });
-  if (!hayArchivo) {
+
+  // Verificar que al menos un doc tenga archivo nuevo en cache
+  const hayArchivoNuevo = docIds.some(docId => !!nsrvFilesCache[docId]);
+  // O que al menos uno ya tenga archivo existente (modo edición)
+  const hayArchivoExistente = docIds.some((docId, idx) => {
+    const dz = document.getElementById(`nsrv-dropzone-${idx}`);
+    return !!dz?.dataset.hasfile && !dz?.dataset.pending;
+  });
+  if (!hayArchivoNuevo && !hayArchivoExistente) {
     showToast('Cargá al menos un archivo antes de guardar.', 'error');
     return;
   }
 
-  // Verificar fechas: archivo sin fecha o fecha inválida
+  // Validar fechas solo para archivos NUEVOS en cache
   const errores = [];
-  docIdsCheck.forEach((docId, idx) => {
-    const dz  = document.getElementById(`nsrv-dropzone-${idx}`);
-    if (!dz?.dataset.hasfile) return; // sin archivo, no valida
+  docIds.forEach((docId, idx) => {
+    if (!nsrvFilesCache[docId]) return; // sin archivo nuevo, saltar
     const vto = document.getElementById(`nsrv-vto-${idx}`)?.value || '';
     const dd  = document.getElementById(`nsrv-vto-dd-${idx}`)?.value || '';
     const mm  = document.getElementById(`nsrv-vto-mm-${idx}`)?.value || '';
     const aa  = document.getElementById(`nsrv-vto-aa-${idx}`)?.value || '';
-    const doc = DOCUMENTOS_CAT.find(d => d.Doc_ID === docId);
-    const nombre = doc?.Doc_Nombre || docId;
+    const nombre = docMap[docId]?.Doc_Nombre || docId;
     if (!dd || !mm || !aa) {
       errores.push(`"${nombre}": falta fecha de vencimiento`);
     } else if (!vto) {
@@ -3738,11 +3733,10 @@ async function guardarNuevoServicio() {
   setLoading(btn, true);
 
   try {
-    // Verificar si ya existen registros
+    // Crear registros si no existen
     const existentes = DOCUMENTACION.filter(d =>
       d.Obra_ID === obraId && d.Servicio_ID === srvId && d.Proveedor === proveedor
     );
-
     if (!existentes.length) {
       await gasPost({
         accion: 'crearRegistrosDoc',
@@ -3755,47 +3749,51 @@ async function guardarNuevoServicio() {
       });
     }
 
-    // Guardar vto y periodicidad para cada doc que tenga esos datos
-    const matrizRow = (MATRIZ.rows || []).find(r => r.Servicio_ID === srvId);
-    const docIds    = matrizRow ? matrizRow.docs : [];
+    const estadoDoc = perfil === 'proveedor' ? 'Pendiente' : 'Aprobado';
 
-    const perfil = currentUser?.perfil || 'admin';
-    const promesas = docIds.map((docId, idx) => {
+    // Procesar cada doc de forma SECUENCIAL para evitar race conditions en Drive
+    for (let idx = 0; idx < docIds.length; idx++) {
+      const docId  = docIds[idx];
       const vto    = document.getElementById(`nsrv-vto-${idx}`)?.value || '';
       const period = document.getElementById(`nsrv-period-${idx}`)?.value || '';
       const dz     = document.getElementById(`nsrv-dropzone-${idx}`);
-      const tieneArchivo = !!dz?.dataset.hasfile;
+      const tieneArchivoNuevo     = !!nsrvFilesCache[docId];
+      const tieneArchivoExistente = !!dz?.dataset.hasfile && !dz?.dataset.pending;
+      const tieneArchivo          = tieneArchivoNuevo || tieneArchivoExistente;
+      const estado                = tieneArchivo ? estadoDoc : 'Faltante';
+      const docObj                = docMap[docId] || {};
 
-      // Estado: Aprobado si tiene archivo y no es proveedor, Pendiente si tiene archivo y es proveedor, Faltante si no tiene archivo
-      const estado = tieneArchivo
-        ? (perfil === 'proveedor' ? 'Pendiente' : 'Aprobado')
-        : 'Faltante';
-
-      const promesasDoc = [
-        gasPost({
+      if (tieneArchivoNuevo) {
+        // Subir archivo nuevo al Drive
+        const { file, base64 } = nsrvFilesCache[docId];
+        const ext = file.name.includes('.') ? '.' + file.name.split('.').pop() : '';
+        await gasPost({
+          accion: 'subirArchivo',
+          data: {
+            Obra_ID:       obraId,
+            Servicio_ID:   srvId,
+            Proveedor:     proveedor,
+            Doc_ID:        docId,
+            UN:            nuevoSrvState.empresa || getUNDeObra(obraId),
+            nombreArchivo: nsrvNombreArchivo(vto, docObj.Doc_Nombre || docId) + ext,
+            mimeType:      file.type || 'application/octet-stream',
+            base64,
+            Doc_Vto:       vto,
+            Doc_Estado:    estado,
+          }
+        });
+      } else if (vto || period) {
+        // Solo actualizar vto/periodicidad si hay algo que cambiar
+        await gasPost({
           accion: 'actualizarVtoPeriodo',
           data: { Obra_ID: obraId, Servicio_ID: srvId, Proveedor: proveedor, Doc_ID: docId, Doc_Vto: vto, Doc_Periodicidad: period, Doc_Estado: estado }
-        }).catch(() => {})
-      ];
-
-      // Si tiene archivo, renombrar con la fecha definitiva
-      if (tieneArchivo) {
-        const doc     = DOCUMENTOS_CAT.find(d => d.Doc_ID === docId) || {};
-        const dzEl    = document.getElementById(`nsrv-dropzone-${idx}`);
-        const ext     = (dzEl?.dataset.ext || '');
-        const nuevoNombre = nsrvNombreArchivo(vto, doc.Doc_Nombre || docId) + ext;
-        promesasDoc.push(
-          gasPost({
-            accion: 'renombrarArchivo',
-            data: { Obra_ID: obraId, Servicio_ID: srvId, Proveedor: proveedor, Doc_ID: docId, nuevoNombre }
-          }).catch(() => {})
-        );
+        }).catch(() => {});
       }
+    }
 
-      return Promise.all(promesasDoc);
-    });
+    // Limpiar cache
+    nsrvFilesCache = {};
 
-    await Promise.all(promesas);
     DOCUMENTACION = await gasPost({ accion: 'getDocumentacion' });
     renderObras();
     renderDashboard();
