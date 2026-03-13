@@ -189,7 +189,7 @@
   }
   .topbar .user-name,
   .topbar .user-role,
-  .topbar .btn-tema { color: #e8eaf0 !important; }
+  .topbar .btn-tema { color: #8892a4 !important; }
   .topbar .btn-tema { border-color: #2a3045 !important; }
   .topbar .btn-tema:hover { border-color: #3b82f6 !important; color: #3b82f6 !important; }
   .topbar-logo {
@@ -1081,7 +1081,7 @@
         </button>
         <span class="refresh-badge" id="refresh-badge"></span>
       </div>
-      <button class="btn-tema" onclick="toggleTema()" id="btn-tema" title="Cambiar tema">🌙</button>
+      <button class="btn-tema" onclick="toggleTema()" id="btn-tema" title="Cambiar tema"><svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M21 12.79A9 9 0 1 1 11.21 3a7 7 0 0 0 9.79 9.79z"/></svg></button>
     </div>
   </div>
 
@@ -1094,13 +1094,16 @@
           <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg> Dashboard
         </div>
         <div class="nav-item" onclick="showView('obras')" id="nav-obras">
-          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M3 7l9-4 9 4M4 7v14M20 7v14M9 21V11h6v10"/></svg> Obras
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M3 7l9-4 9 4M4 7v14M20 7v14M9 21V11h6v10"/></svg> Servicios
         </div>
         <div class="nav-item" onclick="showView('vehiculos')" id="nav-vehiculos">
           <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 17H3v-5l2-5h14l2 5v5h-2M5 17a2 2 0 1 0 4 0 2 2 0 0 0-4 0M15 17a2 2 0 1 0 4 0 2 2 0 0 0-4 0"/><path d="M5 12h14"/></svg> Vehículos
         </div>
         <div class="nav-item" onclick="showView('personas')" id="nav-personas">
           <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="7" r="4"/><path d="M4 21v-1a8 8 0 0 1 16 0v1"/></svg> Personas
+        </div>
+        <div class="nav-item" onclick="showView('obras-construccion')" id="nav-obras-construccion">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="1"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><line x1="12" y1="12" x2="12" y2="16"/><line x1="10" y1="14" x2="14" y2="14"/></svg> Obras
         </div>
         <div class="nav-item" onclick="showView('consulta')" id="nav-consulta">
           <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg> Consulta
@@ -1163,6 +1166,12 @@
           <div class="table-wrap">
             <div class="table-toolbar">
               <div class="table-title">ESTADO POR OBRA</div>
+              <div style="display:flex;align-items:center;gap:6px;">
+                <input class="search-input" id="search-dashboard" placeholder="Buscar..." oninput="filtrarDashboard()" style="width:180px;"/>
+                <button onclick="limpiarBuscadorDashboard()" title="Limpiar búsqueda" style="background:none;border:none;cursor:pointer;color:var(--muted);padding:4px;display:flex;align-items:center;" id="btn-limpiar-dash">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+                </button>
+              </div>
             </div>
             <table>
               <thead>
@@ -1347,6 +1356,23 @@
         <div class="view-body">
           <div class="empty-state" style="margin-top:60px;">
             <div class="empty-icon">◎</div>
+            <div class="empty-text">Sección en construcción</div>
+            <div class="empty-sub">Próximamente disponible</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- OBRAS EN CONSTRUCCION -->
+      <div class="view" id="view-obras-construccion">
+        <div class="page-header">
+          <div>
+            <div class="page-title">Obras</div>
+            <div class="page-subtitle">// Gestión de obras</div>
+          </div>
+        </div>
+        <div class="view-body">
+          <div class="empty-state" style="margin-top:60px;">
+            <div class="empty-icon">🏗️</div>
             <div class="empty-text">Sección en construcción</div>
             <div class="empty-sub">Próximamente disponible</div>
           </div>
@@ -2112,6 +2138,25 @@ function docEstadoBadge(est) {
 // ═══════════════════════════════════════════════════════════
 // 7 - DASHBOARD
 // ═══════════════════════════════════════════════════════════
+// ── Buscador del Dashboard ───────────────────────────────────────
+let _dashFilter = '';
+
+function filtrarDashboard() {
+  _dashFilter = document.getElementById('search-dashboard').value.toLowerCase();
+  const btn = document.getElementById('btn-limpiar-dash');
+  if (btn) btn.style.color = _dashFilter ? 'var(--danger)' : 'var(--muted)';
+  renderDashboard();
+}
+
+function limpiarBuscadorDashboard() {
+  _dashFilter = '';
+  const inp = document.getElementById('search-dashboard');
+  if (inp) inp.value = '';
+  const btn = document.getElementById('btn-limpiar-dash');
+  if (btn) btn.style.color = 'var(--muted)';
+  renderDashboard();
+}
+
 function renderDashboard() {
   const obras = obrasVisibles();
   let totalPend = 0, totalRech = 0;
@@ -2131,7 +2176,15 @@ function renderDashboard() {
     tbody.innerHTML = `<tr><td colspan="5"><div class="empty-state"><div class="empty-icon">◫</div><div class="empty-text">Sin obras cargadas</div></div></td></tr>`;
     return;
   }
-  tbody.innerHTML = obras.map(o => {
+  const obrasFiltradas = _dashFilter ? obras.filter(o => {
+    const servicios = getServiciosPorObra(o.Obra_ID);
+    const srvNombre = servicios.map(s => getNombreServicio(s.Servicio_ID)).join(' ').toLowerCase();
+    return (o.Nombre  || '').toLowerCase().includes(_dashFilter) ||
+           srvNombre.includes(_dashFilter) ||
+           (o.Estado  || '').toLowerCase().includes(_dashFilter);
+  }) : obras;
+
+  tbody.innerHTML = obrasFiltradas.map(o => {
     const s      = getDocsStats(o.Obra_ID);
     const pct    = s.total > 0 ? Math.round((s.aprobados / s.total) * 100) : 0;
     const fillCls = pct === 100 ? 'ok' : pct > 60 ? '' : 'warn';
@@ -3256,7 +3309,7 @@ function renderLog(log) {
 // ═══════════════════════════════════════════════════════════
 function toggleTema() {
   const isLight = document.body.classList.toggle('light');
-  document.getElementById('btn-tema').textContent = isLight ? '🌕' : '🌙';
+  document.getElementById('btn-tema').innerHTML = isLight ? `<svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3" stroke="currentColor" stroke-width="2"/><line x1="12" y1="21" x2="12" y2="23" stroke="currentColor" stroke-width="2"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64" stroke="currentColor" stroke-width="2"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78" stroke="currentColor" stroke-width="2"/><line x1="1" y1="12" x2="3" y2="12" stroke="currentColor" stroke-width="2"/><line x1="21" y1="12" x2="23" y2="12" stroke="currentColor" stroke-width="2"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36" stroke="currentColor" stroke-width="2"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22" stroke="currentColor" stroke-width="2"/></svg>` : `<svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M21 12.79A9 9 0 1 1 11.21 3a7 7 0 0 0 9.79 9.79z"/></svg>`;
   localStorage.setItem('gestdoc_tema', isLight ? 'light' : 'dark');
 }
 
@@ -3267,7 +3320,7 @@ function toggleTema() {
     // El botón se actualiza cuando el DOM carga
     document.addEventListener('DOMContentLoaded', () => {
       const btn = document.getElementById('btn-tema');
-      if (btn) btn.textContent = '🌕';
+      if (btn) btn.innerHTML = `<svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3" stroke="currentColor" stroke-width="2"/><line x1="12" y1="21" x2="12" y2="23" stroke="currentColor" stroke-width="2"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64" stroke="currentColor" stroke-width="2"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78" stroke="currentColor" stroke-width="2"/><line x1="1" y1="12" x2="3" y2="12" stroke="currentColor" stroke-width="2"/><line x1="21" y1="12" x2="23" y2="12" stroke="currentColor" stroke-width="2"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36" stroke="currentColor" stroke-width="2"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22" stroke="currentColor" stroke-width="2"/></svg>`;
     });
   }
 })();
@@ -3280,7 +3333,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Restaurar ícono tema si corresponde
   if (localStorage.getItem('gestdoc_tema') === 'light') {
     const btn = document.getElementById('btn-tema');
-    if (btn) btn.textContent = '🌕';
+    if (btn) btn.innerHTML = `<svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3" stroke="currentColor" stroke-width="2"/><line x1="12" y1="21" x2="12" y2="23" stroke="currentColor" stroke-width="2"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64" stroke="currentColor" stroke-width="2"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78" stroke="currentColor" stroke-width="2"/><line x1="1" y1="12" x2="3" y2="12" stroke="currentColor" stroke-width="2"/><line x1="21" y1="12" x2="23" y2="12" stroke="currentColor" stroke-width="2"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36" stroke="currentColor" stroke-width="2"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22" stroke="currentColor" stroke-width="2"/></svg>`;
   }
 });
 
